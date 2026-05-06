@@ -18,13 +18,14 @@
 Ensure you have Python 3 installed. Then, install the required dependencies using pip:  
 pip install \-r requirements.txt
 
-### **2\. Windows Context Menu Integration (Optional but Recommended)**
+### **2\. Windows Context Menu Integration (Automated)**
 
-To integrate Comparateur Pro into your right-click menu, choose the file that matches your preferred language:
+Integrating Comparateur Pro into your Windows right-click menu is now fully automated and portable\!
 
-1. Choose either **Menu\_Comparateur\_EN.reg** (for English) or **Menu\_Comparateur\_FR.reg** (for French) and open it in a text editor.  
-2. Update the path (D:\\\\Documents\\\\Python Scripts\\\\...) to point to the actual location of comparateur\_app.py on your machine.  
-3. Double-click the updated .reg file to add the entries to your Windows Registry.
+1. Double-click the **install\_raccourcis.bat** file included in the repository.  
+2. The script will automatically detect the folder's location.  
+3. Choose your preferred menu language (1 for French, 2 for English) directly in the command prompt.  
+4. That's it\! You can now move the folder anywhere; just re-run the .bat file to update the paths in your registry instantly.
 
 ## **🛠️ Usage**
 
