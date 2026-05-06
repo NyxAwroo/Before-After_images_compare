@@ -1,3 +1,18 @@
+<div align="center">
+  <h1>📸 Comparateur Pro</h1>
+  
+  <p>
+    <img src="https://img.shields.io/badge/Language-English-007acc?style=flat-square" alt="Language English">
+    <img src="https://img.shields.io/badge/Langue-Français-007acc?style=flat-square" alt="Langue Français">
+    <img src="https://img.shields.io/badge/Open_Source-%E2%9C%94-success?style=flat-square" alt="Open Source">
+    <img src="https://img.shields.io/badge/License-MIT-lightgrey?style=flat-square" alt="License MIT">
+  </p>
+
+  <p><b>A professional, lightweight, and fast image comparison tool for Windows.</b></p>
+</div>
+
+---
+
 **Comparateur Pro** is designed to streamline the workflow of comparing multiple images simultaneously. With perfect synchronization of zoom and pan operations, intelligent auto-alignment, and heatmap analysis, it's the ideal tool for photographers, designers, and anyone who needs precise visual comparisons.
 
 ## **✨ Features**
