@@ -1,0 +1,21 @@
+# **Python**
+
+**pycache**/  
+\*.py\[cod\]  
+\*$py.class  
+.venv/  
+venv/
+
+# **App spécifique**
+
+comparateur\_config.json  
+comparateur\_pro\_cache.txt  
+comparateur\_crash.log  
+*\_aligned.*  
+*\_heatmap\_cumulee.*
+
+# **Windows**
+
+Thumbs.db  
+ehthumbs.db  
+Desktop.ini
