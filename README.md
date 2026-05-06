@@ -33,7 +33,15 @@
 Ensure you have Python 3 installed. Then, install the required dependencies using pip:  
 pip install \-r requirements.txt
 
+<div align="center">
+  <img src="https://raw.githubusercontent.com/NyxAwroo/Before-After_images_compare/main/screenshot%20demo/Explorateur%20de%20fichiers.png" alt="Explorateur de fichiers" width="400">
+</div>
+
 ### **2\. Windows Context Menu Integration (Automated)**
+
+<div align="center">
+  <img src="[https://raw.githubusercontent.com/NyxAwroo/Before-After_images_compare/main/screenshot%20demo/Explorateur%20de%20fichiers.png](https://github.com/NyxAwroo/Before-After_images_compare/blob/main/screenshot%20demo/Explorateur%20de%20fichiers.png)" alt="Explorateur de fichiers" width="450">
+</div>
 
 Integrating Comparateur Pro into your Windows right-click menu is now fully automated and portable\!
 
