@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>📸 Comparateur Pro</h1>
+  <h1>📸 Before-After images compare</h1>
   
   <p>
     <img src="https://img.shields.io/badge/Language-English-007acc?style=flat-square" alt="Language English">
@@ -16,7 +16,7 @@
   <img src="https://github.com/NyxAwroo/Before-After_images_compare/blob/main/screenshot%20demo/interface.png" alt="Explorateur de fichiers" width="750">
 </div>
 
-**Comparateur Pro** is designed to streamline the workflow of comparing multiple images simultaneously. With perfect synchronization of zoom and pan operations, intelligent auto-alignment, and heatmap analysis, it's the ideal tool for photographers, designers, and anyone who needs precise visual comparisons.
+**Before-After images compare** is designed to streamline the workflow of comparing multiple images simultaneously. With perfect synchronization of zoom and pan operations, intelligent auto-alignment, and heatmap analysis, it's the ideal tool for photographers, designers, and anyone who needs precise visual comparisons.
 
 
 
