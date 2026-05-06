@@ -12,8 +12,13 @@
 </div>
 
 ---
+<div align="center">
+  <img src="https://github.com/NyxAwroo/Before-After_images_compare/blob/main/screenshot%20demo/interface.png" alt="Explorateur de fichiers" width="750">
+</div>
 
 **Comparateur Pro** is designed to streamline the workflow of comparing multiple images simultaneously. With perfect synchronization of zoom and pan operations, intelligent auto-alignment, and heatmap analysis, it's the ideal tool for photographers, designers, and anyone who needs precise visual comparisons.
+
+
 
 ## **✨ Features**
 
@@ -35,8 +40,8 @@ pip install \-r requirements.txt
 
 ### **2\. Windows Context Menu Integration (Automated)**
 
-<div align="center">
-  <img src="[https://raw.githubusercontent.com/NyxAwroo/Before-After_images_compare/main/screenshot%20demo/Explorateur%20de%20fichiers.png](https://github.com/NyxAwroo/Before-After_images_compare/blob/main/screenshot%20demo/Explorateur%20de%20fichiers.png)" alt="Explorateur de fichiers" width="550">
+<div align="left">
+  <img src="https://raw.githubusercontent.com/NyxAwroo/Before-After_images_compare/main/screenshot%20demo/Explorateur%20de%20fichiers.png" alt="Explorateur de fichiers" width="650">
 </div>
 
 Integrating Comparateur Pro into your Windows right-click menu is now fully automated and portable\!
@@ -59,6 +64,10 @@ Integrating Comparateur Pro into your Windows right-click menu is now fully auto
   * Delete: Remove the selected image or pack.  
   * Ctrl \+ C: Copy the current comparison view to the clipboard.  
   * Ctrl \+ S: Open the Export dialog.
+ 
+<div align="left">
+  <img src="https://github.com/NyxAwroo/Before-After_images_compare/blob/main/screenshot%20demo/Export_Rapide_3_20260506_213641.jpg" alt="Explorateur de fichiers" width="450">
+</div>
 
 ## **📝 License**
 
