@@ -11,6 +11,8 @@ venv/
 comparateur\_config.json  
 comparateur\_pro\_cache.txt  
 comparateur\_crash.log  
+compilation\_templates.json  
+*.comproj  
 *\_aligned.*  
 *\_heatmap\_cumulee.*
 

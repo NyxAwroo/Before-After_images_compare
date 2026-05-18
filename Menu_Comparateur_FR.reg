@@ -16,13 +16,13 @@ Windows Registry Editor Version 5.00
 "MUIVerb"="1. Ouvrir dans Comparateur Pro"
 
 [HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\image\shell\ComparateurPro\shell\cmd1\command]
-@="pyw \"D:\\Documents\\Python Scripts\\comparaison image AVANT-APRES\\comparateur_app.py\" \"%1\""
+@="pyw \"D:\\Documents\\Python Scripts\\comparaison image AVANT-APRES\\Before-After_images_compare\\comparateur_app.py\" \"%1\""
 
 [HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\image\shell\ComparateurPro\shell\cmd2]
 "MUIVerb"="2. Generer Export Rapide"
 
 [HKEY_CURRENT_USER\Software\Classes\SystemFileAssociations\image\shell\ComparateurPro\shell\cmd2\command]
-@="pyw \"D:\\Documents\\Python Scripts\\comparaison image AVANT-APRES\\comparateur_app.py\" \"%1\" --export-rapide"
+@="pyw \"D:\\Documents\\Python Scripts\\comparaison image AVANT-APRES\\Before-After_images_compare\\comparateur_app.py\" \"%1\" --export-rapide"
 
 ; 3. INSTALLATION DU NOUVEAU MENU PRO POUR LES DOSSIERS
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\ComparateurPro]
@@ -34,10 +34,10 @@ Windows Registry Editor Version 5.00
 "MUIVerb"="1. Ouvrir le dossier dans Comparateur Pro"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\ComparateurPro\shell\cmd1\command]
-@="pyw \"D:\\Documents\\Python Scripts\\comparaison image AVANT-APRES\\comparateur_app.py\" \"%V\""
+@="pyw \"D:\\Documents\\Python Scripts\\comparaison image AVANT-APRES\\Before-After_images_compare\\comparateur_app.py\" \"%V\""
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\ComparateurPro\shell\cmd2]
 "MUIVerb"="2. Export Batch (Tout le dossier)"
 
 [HKEY_CURRENT_USER\Software\Classes\Directory\shell\ComparateurPro\shell\cmd2\command]
-@="pyw \"D:\\Documents\\Python Scripts\\comparaison image AVANT-APRES\\comparateur_app.py\" \"%V\" --batch"
+@="pyw \"D:\\Documents\\Python Scripts\\comparaison image AVANT-APRES\\Before-After_images_compare\\comparateur_app.py\" \"%V\" --batch"

@@ -1,0 +1,49 @@
+============================================================
+  DOSSIER DES LANGUES — Comparateur Pro
+============================================================
+
+Ce dossier contient les fichiers de traduction du logiciel.
+Chaque fichier .json correspond a une langue.
+
+------------------------------------------------------------
+  AJOUTER UNE NOUVELLE LANGUE
+------------------------------------------------------------
+
+1. Copiez le fichier "en.json" (ou "fr.json") et renommez la
+   copie avec le code de votre langue, par exemple "de.json"
+   pour l'allemand, "es.json" pour l'espagnol.
+
+2. Ouvrez le fichier copie avec un editeur de texte
+   (Notepad, VS Code...).
+
+3. En haut du fichier, modifiez le bloc "_meta" :
+       "_meta": { "code": "de", "name": "Deutsch" }
+   - "code" : le code court de la langue (de, es, it, pt...)
+   - "name" : le nom affiche dans les reglages du logiciel
+
+4. Traduisez UNIQUEMENT le texte a DROITE des deux-points.
+   Ne touchez JAMAIS aux cles a gauche.
+       Correct   :  "comp_export": "Exporter..."   ->  "comp_export": "Exportieren..."
+       A ne pas faire : changer "comp_export"
+
+5. Enregistrez le fichier en encodage UTF-8.
+
+6. Placez le fichier dans ce dossier "langues".
+   Au prochain demarrage, la langue apparaitra automatiquement
+   dans Parametres > Langue.
+
+------------------------------------------------------------
+  IMPORTER UNE LANGUE DEPUIS LE LOGICIEL
+------------------------------------------------------------
+
+Vous pouvez aussi passer par le logiciel :
+   Parametres (icone en haut a droite) > Importer un fichier
+   de langue. Le fichier sera copie ici automatiquement.
+
+------------------------------------------------------------
+  PARTAGER VOTRE TRADUCTION
+------------------------------------------------------------
+
+Les traductions communautaires sont les bienvenues !
+Vous pouvez proposer votre fichier .json sur la page GitHub
+du projet pour qu'il soit inclus dans une prochaine version.

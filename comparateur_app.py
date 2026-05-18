@@ -19,9 +19,10 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QLabel, QPushButton, QFileDialog, 
                              QStackedWidget, QFrame, QMessageBox, QListWidget, 
                              QListWidgetItem, QAbstractItemView, QDialog, QSpinBox, 
-                             QSlider, QColorDialog, QCheckBox, QComboBox, QLineEdit)
+                             QSlider, QColorDialog, QCheckBox, QComboBox, QLineEdit,
+                             QTabWidget)
 from PyQt5.QtGui import (QPainter, QPixmap, QPen, QFont, QColor, QCursor, QImage, QIcon)
-from PyQt5.QtCore import Qt, QRect, QSize, QBuffer, QIODevice, pyqtSignal
+from PyQt5.QtCore import Qt, QRect, QRectF, QSize, QBuffer, QIODevice, pyqtSignal
 
 def global_exception_handler(exctype, value, traceback_obj):
     import traceback
@@ -78,6 +79,13 @@ LANGUAGES = {
         "new_pack": "+ New Pack",
         "del_pack": "Delete this pack",
         "clear_list": "Clear list",
+        "recent_btn": "🕘 Recent",
+        "recent_title": "Recent comparisons",
+        "recent_empty": "No recent comparisons yet.",
+        "recent_open": "Open",
+        "recent_clear": "Clear history",
+        "recent_missing": "Some images of this comparison are missing and were skipped.",
+        "recent_gone": "None of this comparison's images could be found.",
         "vertical": "⬍ Vertical",
         "horizontal": "⬌ Horizontal",
         "center": "Center",
@@ -110,7 +118,60 @@ LANGUAGES = {
         "warning": "Warning",
         "info": "Information",
         "success": "Success",
-        "error": "Error"
+        "error": "Error",
+        "tab_comparateur": "Comparator",
+        "tab_compilation": "Compilation",
+        "shortcuts_title": "Keyboard shortcuts",
+        "shortcuts_section_general": "General",
+        "shortcuts_section_compare": "Comparator view",
+        "shortcuts_section_compil": "Compilation view",
+        "sc_fullscreen": "Toggle fullscreen",
+        "sc_copy": "Copy to clipboard",
+        "sc_export": "Open export dialog",
+        "sc_delete_pack": "Delete selected pack / image",
+        "sc_zoom": "Zoom in / out",
+        "sc_pan": "Pan the view",
+        "sc_blink": "Blink mode (reference vs current)",
+        "sc_undo": "Undo cursor move",
+        "sc_move_cursor": "Nudge the first cursor",
+        "sc_comp_select": "Select a cell (single click)",
+        "sc_comp_delete": "Clear the selected cell",
+        "sc_comp_swap": "Swap two cells (Ctrl + drag & drop)",
+        "sc_comp_adjust": "Reposition image inside a cell (drag)",
+        "sc_comp_zoom_cell": "Zoom image inside a cell (wheel)",
+        "sc_comp_undo": "Undo last action",
+        "sc_comp_redo": "Redo last action",
+        "sc_comp_export": "Quick export of the compilation",
+        "settings_language_section": "Language",
+        "settings_export_lang": "Export language file...",
+        "settings_import_lang": "Import language file...",
+        "settings_lang_exported": "Language template exported:\n{path}",
+        "settings_lang_imported": "Language imported: {name}\nRestart to apply if needed.",
+        "settings_lang_err": "Could not read this language file.",
+        "settings_shortcuts_btn": "View keyboard shortcuts",
+        "settings_translate_help": "To translate the app: export a language file, edit the texts, then import it back.",
+        "view_mode": "View mode:",
+        "view_mode_slider": "Slider compare",
+        "view_mode_side": "Side by side",
+        "view_mode_diff": "Pixel difference",
+        "side_gap": "Gap between images:",
+        "loupe_enable": "🔎 Magnifier (Loupe)",
+        "loupe_zoom": "Loupe zoom:",
+        "diff_btn": "🔬 Pixel difference",
+        "diff_title": "Pixel Difference (subtraction)",
+        "diff_info": "🔬 Pixel difference: brighter areas changed more.",
+        "similarity_btn": "📊 Similarity score",
+        "similarity_title": "Similarity measure",
+        "similarity_info": "Comparison of image {idx} against the reference (image 1):",
+        "similarity_ssim": "SSIM (structural similarity)",
+        "similarity_psnr": "PSNR (peak signal-to-noise)",
+        "similarity_diffpct": "Differing pixels",
+        "similarity_identical": "Images are identical.",
+        "similarity_need_two": "At least 2 images are required.",
+        "settings_slider_live": "Move the slider live on mouse hover (no click)",
+        "settings_loupe_zoom": "Magnifier zoom level:",
+        "export_done_status": "✔ Export saved: {path}",
+        "comp_export_status": "✔ Compilation exported: {path}"
     },
     "fr": {
         "app_title": "Comparateur Pro (Ctrl+Molette pour Zoomer, Clic-droit pour déplacer)",
@@ -135,6 +196,13 @@ LANGUAGES = {
         "new_pack": "+ Nouveau Pack",
         "del_pack": "Supprimer ce pack",
         "clear_list": "Vider la liste",
+        "recent_btn": "🕘 Récents",
+        "recent_title": "Comparaisons récentes",
+        "recent_empty": "Aucune comparaison récente pour l'instant.",
+        "recent_open": "Ouvrir",
+        "recent_clear": "Vider l'historique",
+        "recent_missing": "Certaines images de cette comparaison sont introuvables et ont été ignorées.",
+        "recent_gone": "Aucune image de cette comparaison n'a pu être retrouvée.",
         "vertical": "⬍ Vertical",
         "horizontal": "⬌ Horizontal",
         "center": "Centrer",
@@ -167,9 +235,105 @@ LANGUAGES = {
         "warning": "Attention",
         "info": "Info",
         "success": "Succès",
-        "error": "Erreur"
+        "error": "Erreur",
+        "tab_comparateur": "Comparateur",
+        "tab_compilation": "Compilation",
+        "shortcuts_title": "Raccourcis clavier",
+        "shortcuts_section_general": "General",
+        "shortcuts_section_compare": "Vue Comparateur",
+        "shortcuts_section_compil": "Vue Compilation",
+        "sc_fullscreen": "Basculer en plein ecran",
+        "sc_copy": "Copier dans le presse-papier",
+        "sc_export": "Ouvrir la fenetre d'export",
+        "sc_delete_pack": "Supprimer le pack / l'image selectionne",
+        "sc_zoom": "Zoomer / dezoomer",
+        "sc_pan": "Deplacer la vue",
+        "sc_blink": "Mode Blink (reference vs vue actuelle)",
+        "sc_undo": "Annuler le deplacement de curseur",
+        "sc_move_cursor": "Deplacer finement le premier curseur",
+        "sc_comp_select": "Selectionner une case (clic simple)",
+        "sc_comp_delete": "Vider la case selectionnee",
+        "sc_comp_swap": "Intervertir deux cases (Ctrl + glisser-deposer)",
+        "sc_comp_adjust": "Repositionner l'image dans une case (glisser)",
+        "sc_comp_zoom_cell": "Zoomer l'image dans une case (molette)",
+        "sc_comp_undo": "Annuler la derniere action",
+        "sc_comp_redo": "Retablir la derniere action",
+        "settings_language_section": "Langue",
+        "settings_export_lang": "Exporter un fichier de langue...",
+        "settings_import_lang": "Importer un fichier de langue...",
+        "settings_lang_exported": "Modele de langue exporte :\n{path}",
+        "settings_lang_imported": "Langue importee : {name}\nRedemarrez pour appliquer si besoin.",
+        "settings_lang_err": "Impossible de lire ce fichier de langue.",
+        "settings_shortcuts_btn": "Voir les raccourcis clavier",
+        "settings_translate_help": "Pour traduire le logiciel : exportez un fichier de langue, modifiez les textes, puis reimportez-le.",
+        "view_mode": "Mode d'affichage :",
+        "view_mode_slider": "Comparaison a curseur",
+        "view_mode_side": "Cote a cote",
+        "view_mode_diff": "Difference de pixels",
+        "side_gap": "Espace entre les images :",
+        "loupe_enable": "🔎 Loupe",
+        "loupe_zoom": "Zoom de la loupe :",
+        "diff_btn": "🔬 Difference de pixels",
+        "diff_title": "Difference de pixels (soustraction)",
+        "diff_info": "🔬 Difference de pixels : les zones claires ont le plus change.",
+        "similarity_btn": "📊 Score de similarite",
+        "similarity_title": "Mesure de similarite",
+        "similarity_info": "Comparaison de l'image {idx} avec la reference (image 1) :",
+        "similarity_ssim": "SSIM (similarite structurelle)",
+        "similarity_psnr": "PSNR (rapport signal/bruit)",
+        "similarity_diffpct": "Pixels differents",
+        "similarity_identical": "Les images sont identiques.",
+        "similarity_need_two": "Au moins 2 images sont necessaires.",
+        "settings_slider_live": "Deplacer le curseur en direct au survol (sans clic)",
+        "settings_loupe_zoom": "Niveau de zoom de la loupe :",
+        "export_done_status": "✔ Export enregistre : {path}",
+        "comp_export_status": "✔ Compilation exportee : {path}"
     }
 }
+
+# ==========================================
+# SYSTEME DE LANGUES IMPORTABLES
+# ==========================================
+# Les langues integrees (fr/en) sont completees par les fichiers .json
+# presents dans le dossier "langues" a cote du script. Cela permet aux
+# utilisateurs de traduire le logiciel et de partager leurs traductions.
+DOSSIER_LANGUES = os.path.join(DOSSIER_SCRIPT, "langues")
+
+# Noms d'affichage des langues integrees.
+NOMS_LANGUES = {"fr": "Francais", "en": "English"}
+
+
+def charger_langues_externes():
+    """Scanne le dossier 'langues' et fusionne chaque fichier .json trouve
+    dans le dictionnaire LANGUAGES. Format attendu d'un fichier :
+        { "_meta": {"code": "de", "name": "Deutsch"}, "app_title": "...", ... }
+    Le code de langue sert de cle ; le name est affiche dans les reglages."""
+    if not os.path.isdir(DOSSIER_LANGUES):
+        return
+    for nom_fichier in os.listdir(DOSSIER_LANGUES):
+        if not nom_fichier.lower().endswith(".json"):
+            continue
+        chemin = os.path.join(DOSSIER_LANGUES, nom_fichier)
+        try:
+            with open(chemin, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            meta = data.get("_meta", {})
+            code = meta.get("code") or os.path.splitext(nom_fichier)[0]
+            nom_affiche = meta.get("name", code)
+            # On retire la cle technique _meta avant fusion.
+            traductions = {k: v for k, v in data.items() if k != "_meta"}
+            if code in LANGUAGES:
+                # Langue existante : on complete/ecrase les cles fournies.
+                LANGUAGES[code].update(traductions)
+            else:
+                LANGUAGES[code] = traductions
+            NOMS_LANGUES[code] = nom_affiche
+        except Exception:
+            # Un fichier de langue corrompu ne doit pas bloquer le logiciel.
+            pass
+
+
+charger_langues_externes()
 
 class ConfigManager:
     def __init__(self):
@@ -188,8 +352,11 @@ class ConfigManager:
             "orientation": "Vertical",
             "watermark_enabled": False,
             "watermark_text": "Comparateur Pro",
+            "slider_live": False,
+            "loupe_zoom": 2.5,
             "last_packs": [],
-            "last_pack_index": 0
+            "last_pack_index": 0,
+            "recent_packs": []
         }
         self.charger()
 
@@ -214,34 +381,159 @@ class ConfigManager:
 config = ConfigManager()
 
 def tr(key, **kwargs):
+    """Traduit une cle. Repli en cascade : langue choisie -> anglais ->
+    francais -> cle brute. Cela protege des traductions utilisateur
+    incompletes (une cle manquante n'affiche jamais de vide)."""
     lang = config.get("language")
-    if lang not in LANGUAGES:
-        lang = "en"
-    text = LANGUAGES[lang].get(key, key)
+    text = None
+    if lang in LANGUAGES and key in LANGUAGES[lang]:
+        text = LANGUAGES[lang][key]
+    elif "en" in LANGUAGES and key in LANGUAGES["en"]:
+        text = LANGUAGES["en"][key]
+    elif "fr" in LANGUAGES and key in LANGUAGES["fr"]:
+        text = LANGUAGES["fr"][key]
+    else:
+        text = key
     if kwargs:
-        return text.format(**kwargs)
+        try:
+            return text.format(**kwargs)
+        except Exception:
+            return text
     return text
 
+# ==========================================
+# MODULE ADDITIONNEL : COMPILATION D'IMAGES
+# ==========================================
+# Import optionnel : si le fichier est absent, le logiciel fonctionne
+# normalement sans le bouton de compilation (fail-safe).
+try:
+    import compilation_module
+    compilation_module.init_compilation(config, tr, LANGUAGES)
+    HAS_COMPILATION = True
+except Exception:
+    HAS_COMPILATION = False
+
 STYLE_SHEET = """
-QMainWindow, QDialog { background-color: #1e1e1e; color: #ffffff; }
-QLabel { color: #ffffff; }
-QLabel#Titre { font-size: 24px; font-weight: bold; }
-QLabel#SousTitre { color: #aaaaaa; font-size: 14px; }
-QFrame#DropFrame { border: 3px dashed #555555; border-radius: 15px; background-color: #252526; }
-QFrame#DropFrame[hover="true"] { border: 3px dashed #00a8ff; background-color: #2d2d30; }
-QPushButton { background-color: #333333; color: white; border: 1px solid #555555; border-radius: 6px; padding: 6px 12px; font-weight: bold; }
-QPushButton:hover { background-color: #444444; border: 1px solid #888888; }
-QPushButton#PrimaryButton { background-color: #007acc; border: none; }
-QPushButton#PrimaryButton:hover { background-color: #0098ff; }
-QPushButton#DangerButton { background-color: #8b0000; border: none; }
-QPushButton#DangerButton:hover { background-color: #b30000; }
-QFrame#Toolbar, QFrame#Sidebar { background-color: #252526; }
-QFrame#Toolbar { border-bottom: 1px solid #333333; }
-QFrame#Sidebar { border-right: 1px solid #333333; }
-QListWidget { background-color: #252526; border: 1px solid #333333; border-radius: 5px; outline: 0; }
-QListWidget::item { border: 2px solid transparent; border-radius: 5px; padding: 5px; }
-QListWidget::item:selected { border: 2px solid #00a8ff; background-color: #333333; }
-QSpinBox, QSlider, QComboBox, QLineEdit { background-color: #333333; color: white; border: 1px solid #555555; border-radius: 4px; padding: 4px; }
+/* ============================================================
+   THEME "MIDNIGHT BLUE" - sombre bleute moderne, accents orange
+   ============================================================ */
+QMainWindow, QDialog { background-color: #0f1623; color: #e8edf4; }
+QWidget { color: #e8edf4; font-size: 13px; }
+QLabel { color: #e8edf4; }
+QLabel#Titre { font-size: 24px; font-weight: bold; color: #ffffff; }
+QLabel#SousTitre { color: #8b97a8; font-size: 14px; }
+
+/* Zone de depot */
+QFrame#DropFrame { border: 2px dashed #34425a; border-radius: 14px; background-color: #161f2e; }
+QFrame#DropFrame[hover="true"] { border: 2px dashed #ff8c42; background-color: #1d2839; }
+
+/* Boutons : standard sombre bleute */
+QPushButton {
+    background-color: #1d2839; color: #e8edf4;
+    border: 1px solid #34425a; border-radius: 7px;
+    padding: 7px 14px; font-weight: 600;
+}
+QPushButton:hover { background-color: #283750; border: 1px solid #4a9eff; }
+QPushButton:pressed { background-color: #161f2e; }
+QPushButton:disabled { background-color: #161f2e; color: #5a6578; border: 1px solid #232f44; }
+
+/* Bouton primaire : orange premium */
+QPushButton#PrimaryButton {
+    background-color: #ff8c42; color: #1a1205;
+    border: none; font-weight: 700;
+}
+QPushButton#PrimaryButton:hover { background-color: #ffa05f; }
+QPushButton#PrimaryButton:pressed { background-color: #ff7a1a; }
+
+/* Bouton danger : rouge desature */
+QPushButton#DangerButton { background-color: #c0392b; color: #ffffff; border: none; }
+QPushButton#DangerButton:hover { background-color: #e0483a; }
+
+/* Barres et panneaux */
+QFrame#Toolbar, QFrame#Sidebar { background-color: #161f2e; }
+QFrame#Toolbar { border-bottom: 1px solid #283750; }
+QFrame#Sidebar { border-right: 1px solid #283750; }
+
+/* Listes */
+QListWidget { background-color: #161f2e; border: 1px solid #283750; border-radius: 7px; outline: 0; }
+QListWidget::item { border: 2px solid transparent; border-radius: 6px; padding: 5px; }
+QListWidget::item:selected { border: 2px solid #ff8c42; background-color: #1d2839; }
+QListWidget::item:hover { background-color: #1d2839; }
+
+/* Champs de saisie */
+QSpinBox, QSlider, QComboBox, QLineEdit {
+    background-color: #1d2839; color: #e8edf4;
+    border: 1px solid #34425a; border-radius: 6px; padding: 5px;
+}
+QSpinBox:focus, QComboBox:focus, QLineEdit:focus { border: 1px solid #4a9eff; }
+QComboBox QAbstractItemView {
+    background-color: #1d2839; color: #e8edf4;
+    border: 1px solid #34425a; selection-background-color: #ff8c42;
+    selection-color: #1a1205;
+}
+QSpinBox::up-button, QSpinBox::down-button { background-color: #283750; border: none; width: 16px; }
+QSpinBox::up-button:hover, QSpinBox::down-button:hover { background-color: #ff8c42; }
+
+/* Curseur (slider) */
+QSlider::groove:horizontal { height: 5px; background: #283750; border-radius: 2px; }
+QSlider::handle:horizontal {
+    background: #ff8c42; width: 15px; margin: -6px 0; border-radius: 7px;
+}
+QSlider::handle:horizontal:hover { background: #ffa05f; }
+QSlider::sub-page:horizontal { background: #ff8c42; border-radius: 2px; }
+
+/* Cases a cocher / radios */
+QCheckBox, QRadioButton { color: #e8edf4; spacing: 6px; }
+QCheckBox::indicator, QRadioButton::indicator { width: 16px; height: 16px; }
+QCheckBox::indicator { border: 1px solid #34425a; border-radius: 4px; background: #1d2839; }
+QCheckBox::indicator:checked { background: #ff8c42; border: 1px solid #ff8c42; }
+QRadioButton::indicator { border: 1px solid #34425a; border-radius: 8px; background: #1d2839; }
+QRadioButton::indicator:checked { background: #ff8c42; border: 3px solid #1d2839; }
+
+/* Barres de defilement */
+QScrollBar:vertical { background: #161f2e; width: 11px; margin: 0; }
+QScrollBar::handle:vertical { background: #34425a; border-radius: 5px; min-height: 24px; }
+QScrollBar::handle:vertical:hover { background: #4a9eff; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QScrollBar:horizontal { background: #161f2e; height: 11px; margin: 0; }
+QScrollBar::handle:horizontal { background: #34425a; border-radius: 5px; min-width: 24px; }
+QScrollBar::handle:horizontal:hover { background: #4a9eff; }
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal { width: 0; }
+
+/* Menus */
+QMenu { background-color: #1d2839; color: #e8edf4; border: 1px solid #34425a; }
+QMenu::item:selected { background-color: #ff8c42; color: #1a1205; }
+
+/* Onglets principaux */
+QTabWidget#OngletsPrincipaux::pane { border: none; background-color: #0f1623; }
+QTabWidget#OngletsPrincipaux QTabBar::tab {
+    background-color: #161f2e; color: #8b97a8;
+    border: 1px solid #283750; border-bottom: none;
+    border-top-left-radius: 8px; border-top-right-radius: 8px;
+    padding: 9px 24px; margin-right: 3px; font-weight: 700; font-size: 13px;
+}
+QTabWidget#OngletsPrincipaux QTabBar::tab:selected {
+    background-color: #0f1623; color: #ff8c42;
+    border-bottom: 2px solid #ff8c42;
+}
+QTabWidget#OngletsPrincipaux QTabBar::tab:hover:!selected {
+    background-color: #1d2839; color: #e8edf4;
+}
+
+/* Bouton parametres dans le coin des onglets */
+QPushButton#SettingsCorner {
+    background-color: transparent; color: #8b97a8;
+    border: none; padding: 7px 16px; font-weight: 700; font-size: 13px;
+}
+QPushButton#SettingsCorner:hover {
+    background-color: #1d2839; color: #ff8c42; border-radius: 7px;
+}
+
+/* Tooltips */
+QToolTip {
+    background-color: #1d2839; color: #e8edf4;
+    border: 1px solid #ff8c42; padding: 4px;
+}
 """
 
 class ComparateurWidget(QWidget):
@@ -259,6 +551,19 @@ class ComparateurWidget(QWidget):
         self.pan_y = 0
         self.panning = False
         self.last_mouse_pos = None
+        # Mode d'affichage : "slider" (curseur), "side" (cote a cote),
+        # "diff" (difference de pixels). Le mode slider est le mode d'origine.
+        self.mode_affichage = "slider"
+        self.espace_side = 12          # espace entre images en mode cote a cote
+        self.pixmap_diff = None        # QPixmap de difference (mode diff)
+        # Loupe : fenetre grossissante qui suit le curseur.
+        self.loupe_active = False
+        self.loupe_zoom = float(config.get("loupe_zoom") or 2.5)
+        self.loupe_taille = 200        # diametre de la loupe en pixels
+        self.souris_pos = None         # derniere position connue de la souris
+        # Mode "slider en direct" : si actif, le curseur suit la souris au
+        # survol (sans clic). Sinon, comportement clic-maintenu classique.
+        self.slider_live = bool(config.get("slider_live"))
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.StrongFocus)
 
@@ -272,8 +577,17 @@ class ComparateurWidget(QWidget):
             nom = os.path.basename(c)
             info = f"{nom}\n{pixmap.width()} x {pixmap.height()} px\n{taille_mo:.1f} Mo"
             self.infos_images.append(info)
+        # Le pack a change : la difference pre-calculee n'est plus valable.
+        self.pixmap_diff = None
         self.reset_ratios()
-        self.centrer_vue()
+        # Recentrage selon le mode courant ; recalcul de la difference si besoin.
+        if self.mode_affichage == "diff":
+            self.calculer_difference()
+            self.centrer_vue_mode()
+        elif self.mode_affichage == "side":
+            self.centrer_vue_mode()
+        else:
+            self.centrer_vue()
 
     def reset_ratios(self):
         nb_curseurs = len(self.images_originales) - 1
@@ -295,7 +609,11 @@ class ComparateurWidget(QWidget):
 
     def resizeEvent(self, event):
         if not self.images_originales: return
-        self.centrer_vue()
+        if self.mode_affichage == "slider":
+            self.centrer_vue()
+        else:
+            self.centrer_vue_mode()
+            self.update()
         super().resizeEvent(event)
 
     def paintEvent(self, event):
@@ -308,10 +626,22 @@ class ComparateurWidget(QWidget):
         w_aff = w_orig * self.total_zoom
         h_aff = h_orig * self.total_zoom
 
+        # --- Modes d'affichage alternatifs (cote a cote / difference) ---
+        # Le mode "slider" (curseur) reste le comportement d'origine ci-dessous.
+        if self.mode_affichage == "side":
+            self._peindre_cote_a_cote(painter)
+            self._peindre_loupe(painter)
+            return
+        if self.mode_affichage == "diff":
+            self._peindre_difference(painter)
+            self._peindre_loupe(painter)
+            return
+
         if getattr(self, 'blink_mode', False):
             rect_dest = QRect(int(self.pan_x), int(self.pan_y), int(w_aff), int(h_aff))
             rect_source = QRect(0, 0, w_orig, h_orig)
             painter.drawPixmap(rect_dest, img_base, rect_source)
+            self._peindre_loupe(painter)
             return
 
         orientation = config.get("orientation")
@@ -417,13 +747,207 @@ class ComparateurWidget(QWidget):
                         painter.drawText(int(tx), int(ty), rect_text.width(), rect_text.height(), Qt.AlignLeft, texte)
                         painter.restore()
 
+        # Loupe par-dessus le rendu (mode curseur).
+        self._peindre_loupe(painter)
+
+    # ------------------------------------------------------------------
+    #  MODE COTE A COTE  (toutes les images alignees, sans curseur)
+    # ------------------------------------------------------------------
+    def _disposition_side(self):
+        """Calcule la disposition cote a cote : retourne (liste de QRect
+        destination a l'echelle, largeur virtuelle, hauteur virtuelle).
+        On respecte la hauteur de l'image de reference ; chaque image garde
+        son ratio. zoom et pan s'appliquent comme en mode curseur."""
+        is_vert = config.get("orientation") == "Vertical"
+        ref = self.images_originales[0]
+        rects = []
+        if is_vert:
+            # Images alignees horizontalement, hauteur commune = ref.height().
+            h_ref = ref.height()
+            x = 0
+            for img in self.images_originales:
+                if img.height() > 0:
+                    w_img = img.width() * (h_ref / img.height())
+                else:
+                    w_img = img.width()
+                rects.append((x, 0, w_img, h_ref))
+                x += w_img + self.espace_side
+            virt_w = x - self.espace_side if rects else 0
+            virt_h = h_ref
+        else:
+            # Images empilees verticalement, largeur commune = ref.width().
+            w_ref = ref.width()
+            y = 0
+            for img in self.images_originales:
+                if img.width() > 0:
+                    h_img = img.height() * (w_ref / img.width())
+                else:
+                    h_img = img.height()
+                rects.append((0, y, w_ref, h_img))
+                y += h_img + self.espace_side
+            virt_w = w_ref
+            virt_h = y - self.espace_side if rects else 0
+        return rects, virt_w, virt_h
+
+    def _peindre_cote_a_cote(self, painter):
+        rects, virt_w, virt_h = self._disposition_side()
+        for i, img in enumerate(self.images_originales):
+            x, y, w, h = rects[i]
+            rect_dest = QRect(int(self.pan_x + x * self.total_zoom),
+                              int(self.pan_y + y * self.total_zoom),
+                              int(w * self.total_zoom),
+                              int(h * self.total_zoom))
+            painter.drawPixmap(rect_dest, img, QRect(0, 0, img.width(), img.height()))
+        # Etiquettes (une par image).
+        if self.afficher_labels:
+            taille = config.get("label_size")
+            opacite = config.get("label_bg_opacity")
+            for i, info in enumerate(self.infos_images):
+                x, y, w, h = rects[i]
+                px = int(self.pan_x + x * self.total_zoom) + 10
+                py = int(self.pan_y + y * self.total_zoom) + 10
+                font = QFont("Segoe UI", taille, QFont.Bold)
+                painter.setFont(font)
+                rt = painter.fontMetrics().boundingRect(QRect(0, 0, 0, 0),
+                                                        Qt.AlignLeft, info)
+                bg = QRect(px - 5, py - 5, rt.width() + 10, rt.height() + 10)
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QColor(0, 0, 0, opacite))
+                painter.drawRoundedRect(bg, 5, 5)
+                painter.setPen(Qt.white)
+                painter.drawText(px, py, rt.width(), rt.height(),
+                                 Qt.AlignLeft, info)
+
+    # ------------------------------------------------------------------
+    #  MODE DIFFERENCE DE PIXELS
+    # ------------------------------------------------------------------
+    def _peindre_difference(self, painter):
+        """Affiche l'image de difference pre-calculee (self.pixmap_diff).
+        Si elle n'existe pas encore, affiche simplement l'image de base."""
+        pix = self.pixmap_diff if self.pixmap_diff is not None else \
+            self.images_originales[0]
+        w_aff = pix.width() * self.total_zoom
+        h_aff = pix.height() * self.total_zoom
+        rect_dest = QRect(int(self.pan_x), int(self.pan_y),
+                          int(w_aff), int(h_aff))
+        painter.drawPixmap(rect_dest, pix, QRect(0, 0, pix.width(), pix.height()))
+
+    # ------------------------------------------------------------------
+    #  LOUPE  (fenetre grossissante qui suit le curseur)
+    # ------------------------------------------------------------------
+    def _peindre_loupe(self, painter):
+        """Dessine une loupe circulaire centree sur la souris.
+
+        La loupe ne capture PAS le widget (grab() pendant un paintEvent
+        actif est instable et peut faire planter PyQt5). A la place, elle
+        redessine directement la portion concernee a partir des pixmaps
+        sources, avec un facteur de grossissement superieur."""
+        if not self.loupe_active or self.souris_pos is None:
+            return
+        if not self.images_originales:
+            return
+        sx, sy = self.souris_pos.x(), self.souris_pos.y()
+        if sx < 0 or sy < 0 or sx > self.width() or sy > self.height():
+            return
+        d = self.loupe_taille
+        z = max(1.1, self.loupe_zoom)
+
+        # Position de la loupe : decalee pour ne pas masquer le curseur,
+        # ramenee dans la fenetre si elle deborde.
+        lx = sx + 24
+        ly = sy + 24
+        if lx + d > self.width():
+            lx = sx - d - 24
+        if ly + d > self.height():
+            ly = sy - d - 24
+        lx = max(0, min(lx, self.width() - d))
+        ly = max(0, min(ly, self.height() - d))
+        zone = QRect(int(lx), int(ly), d, d)
+
+        # Conversion : point souris -> coordonnees dans l'image de reference.
+        # On reutilise la meme transformation que le rendu courant : un point
+        # ecran (px) correspond a (px - pan) / total_zoom dans la toile.
+        img_ref = self.images_originales[0]
+        # Echelle effective de la loupe : grossissement applique par-dessus
+        # le zoom courant de la vue.
+        echelle_loupe = self.total_zoom * z
+
+        painter.save()
+        # Decoupe circulaire de la zone de la loupe.
+        from PyQt5.QtGui import QPainterPath
+        chemin = QPainterPath()
+        chemin.addEllipse(QRectF(zone))
+        painter.setClipPath(chemin)
+        # Fond neutre sous la loupe.
+        painter.fillRect(zone, QColor("#0f1623"))
+
+        # Position, dans la toile virtuelle, du point sous le curseur.
+        toile_x = (sx - self.pan_x) / self.total_zoom if self.total_zoom else 0
+        toile_y = (sy - self.pan_y) / self.total_zoom if self.total_zoom else 0
+
+        if self.mode_affichage == "diff" and self.pixmap_diff is not None:
+            # Mode difference : on grossit l'image de difference.
+            self._loupe_dessiner_pixmap(painter, self.pixmap_diff, zone,
+                                        toile_x, toile_y, echelle_loupe)
+        elif self.mode_affichage == "side":
+            # Mode cote a cote : on retrouve l'image survolee.
+            rects, _, _ = self._disposition_side()
+            for i, img in enumerate(self.images_originales):
+                rx, ry, rw, rh = rects[i]
+                if rx <= toile_x < rx + rw and ry <= toile_y < ry + rh:
+                    self._loupe_dessiner_pixmap(
+                        painter, img, zone,
+                        toile_x - rx, toile_y - ry, echelle_loupe)
+                    break
+        else:
+            # Mode curseur : on dessine, dans la loupe, la tranche d'image
+            # correspondant a la position (comme le rendu principal).
+            is_vert = config.get("orientation") == "Vertical"
+            dim_max = (img_ref.width() if is_vert else img_ref.height())
+            curseurs = [dim_max * r for r in self.ratios]
+            for i, img in enumerate(self.images_originales):
+                c_g = 0 if i == 0 else curseurs[i - 1]
+                c_d = dim_max if i == len(self.images_originales) - 1 else curseurs[i]
+                pos = toile_x if is_vert else toile_y
+                if c_g <= pos < c_d or i == len(self.images_originales) - 1:
+                    if c_g <= pos < c_d:
+                        self._loupe_dessiner_pixmap(painter, img, zone,
+                                                    toile_x, toile_y,
+                                                    echelle_loupe)
+                        break
+
+        painter.setClipping(False)
+        # Anneau de la loupe.
+        painter.setPen(QPen(QColor(config.get("cursor_color")), 3))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawEllipse(zone)
+        # Petite croix au centre.
+        cx, cy = zone.center().x(), zone.center().y()
+        painter.setPen(QPen(QColor(config.get("cursor_color")), 1))
+        painter.drawLine(cx - 6, cy, cx + 6, cy)
+        painter.drawLine(cx, cy - 6, cx, cy + 6)
+        painter.restore()
+
+    def _loupe_dessiner_pixmap(self, painter, pixmap, zone, src_x, src_y,
+                               echelle):
+        """Dessine, dans `zone` (carre de la loupe), la portion de `pixmap`
+        centree sur (src_x, src_y) image, agrandie au facteur `echelle`."""
+        if pixmap is None or pixmap.isNull():
+            return
+        # Demi-cote de la portion source a echantillonner.
+        demi_src = (zone.width() / echelle) / 2.0
+        sx0 = src_x - demi_src
+        sy0 = src_y - demi_src
+        rect_source = QRectF(sx0, sy0, demi_src * 2, demi_src * 2)
+        painter.drawPixmap(QRectF(zone), pixmap, rect_source)
+
     def mousePressEvent(self, event):
         if event.button() == Qt.RightButton:
             self.panning = True
             self.last_mouse_pos = event.pos()
             self.setCursor(Qt.ClosedHandCursor)
             return
-        if event.button() == Qt.LeftButton and self.ratios:
+        if event.button() == Qt.LeftButton and self.mode_affichage == "slider" and self.ratios:
             self.historique_ratios.append(list(self.ratios))
             if len(self.historique_ratios) > 20: self.historique_ratios.pop(0)
             is_vert = config.get("orientation") == "Vertical"
@@ -433,12 +957,18 @@ class ComparateurWidget(QWidget):
             distances = [abs(c - pos_relative) for c in curseurs_px]
             if distances:
                 min_dist = min(distances)
-                if min_dist < 30:
+                # Tolerance de saisie elargie (40 px) pour attraper le curseur
+                # plus facilement, surtout sur ecran haute densite.
+                if min_dist < 40:
                     self.curseur_actif = distances.index(min_dist)
                     self.update_curseur(pos_relative, dim_max)
 
     def mouseMoveEvent(self, event):
         is_vert = config.get("orientation") == "Vertical"
+        # Suivi de la souris pour la loupe (tous modes).
+        self.souris_pos = event.pos()
+        if self.loupe_active:
+            self.update()
         if self.panning and self.last_mouse_pos:
             delta = event.pos() - self.last_mouse_pos
             self.pan_x += delta.x()
@@ -446,10 +976,25 @@ class ComparateurWidget(QWidget):
             self.last_mouse_pos = event.pos()
             self.update()
             return
+        # En mode cote a cote / difference, seul le pan et la loupe sont actifs.
+        if self.mode_affichage != "slider":
+            return
         if self.curseur_actif is not None:
             pos_relative = (event.x() - self.pan_x) if is_vert else (event.y() - self.pan_y)
             dim_max = (self.images_originales[0].width() * self.total_zoom) if is_vert else (self.images_originales[0].height() * self.total_zoom)
             self.update_curseur(pos_relative, dim_max)
+        elif getattr(self, "slider_live", False) and self.ratios:
+            # Mode "slider en direct" : le 1er curseur suit la souris sans
+            # qu'il faille cliquer. Pratique pour balayer rapidement.
+            pos_relative = (event.x() - self.pan_x) if is_vert else (event.y() - self.pan_y)
+            dim_max = (self.images_originales[0].width() * self.total_zoom) if is_vert else (self.images_originales[0].height() * self.total_zoom)
+            if dim_max > 0:
+                ratio = max(0.0, min(1.0, pos_relative / dim_max))
+                # On ne bouge que le 1er curseur, borne par le suivant.
+                borne_max = 1.0 if len(self.ratios) == 1 else self.ratios[1] - 0.01
+                self.ratios[0] = max(0.0, min(ratio, borne_max))
+                self.update()
+            self.setCursor(Qt.SplitHCursor if is_vert else Qt.SplitVCursor)
         else:
             pos_relative = (event.x() - self.pan_x) if is_vert else (event.y() - self.pan_y)
             dim_max = (self.images_originales[0].width() * self.total_zoom) if is_vert else (self.images_originales[0].height() * self.total_zoom)
@@ -512,6 +1057,106 @@ class ComparateurWidget(QWidget):
         self.ratios[self.curseur_actif] = max(min_r, min(nouveau_ratio, max_r))
         self.update()
 
+    # ------------------------------------------------------------------
+    #  GESTION DES MODES D'AFFICHAGE
+    # ------------------------------------------------------------------
+    def definir_mode(self, mode):
+        """Change le mode d'affichage : 'slider', 'side' ou 'diff'.
+        Recalcule la difference si necessaire puis recentre la vue."""
+        if mode not in ("slider", "side", "diff"):
+            mode = "slider"
+        self.mode_affichage = mode
+        if mode == "diff":
+            self.calculer_difference()
+        self.centrer_vue_mode()
+        self.update()
+
+    def centrer_vue_mode(self):
+        """Centre la vue selon le mode courant (la 'toile' virtuelle change
+        de taille selon le mode)."""
+        if not self.images_originales:
+            return
+        if self.mode_affichage == "side":
+            _, virt_w, virt_h = self._disposition_side()
+        elif self.mode_affichage == "diff" and self.pixmap_diff is not None:
+            virt_w = self.pixmap_diff.width()
+            virt_h = self.pixmap_diff.height()
+        else:
+            virt_w = self.images_originales[0].width()
+            virt_h = self.images_originales[0].height()
+        vue_w, vue_h = self.width(), self.height()
+        zoom_w = vue_w / virt_w if virt_w > 0 else 1
+        zoom_h = vue_h / virt_h if virt_h > 0 else 1
+        self.total_zoom = min(zoom_w, zoom_h, 1.0)
+        self.pan_x = (vue_w - virt_w * self.total_zoom) / 2
+        self.pan_y = (vue_h - virt_h * self.total_zoom) / 2
+
+    def calculer_difference(self):
+        """Construit self.pixmap_diff : image de difference absolue entre
+        la reference (image 1) et la 2e image. Utilise OpenCV si present,
+        sinon un repli QImage pixel par pixel."""
+        if len(self.images_originales) < 2:
+            self.pixmap_diff = None
+            return
+        ref = self.images_originales[0]
+        autre = self.images_originales[1]
+        try:
+            import cv2
+            import numpy as np
+            a = self._qpixmap_vers_array(ref)
+            b = self._qpixmap_vers_array(autre)
+            if a is None or b is None:
+                raise RuntimeError("conversion impossible")
+            if a.shape != b.shape:
+                b = cv2.resize(b, (a.shape[1], a.shape[0]))
+            diff = cv2.absdiff(a, b)
+            # Accentuation legere pour rendre les ecarts plus lisibles.
+            diff = cv2.convertScaleAbs(diff, alpha=2.0)
+            self.pixmap_diff = self._array_vers_qpixmap(diff)
+        except Exception:
+            # Repli pur Qt : difference via QImage.
+            self.pixmap_diff = self._difference_qimage(ref, autre)
+
+    def _qpixmap_vers_array(self, pixmap):
+        """Convertit un QPixmap en tableau numpy BGR (pour OpenCV)."""
+        try:
+            import numpy as np
+            img = pixmap.toImage().convertToFormat(QImage.Format_RGB888)
+            w, h = img.width(), img.height()
+            ptr = img.constBits()
+            ptr.setsize(h * img.bytesPerLine())
+            arr = np.frombuffer(ptr, np.uint8).reshape(
+                (h, img.bytesPerLine()))
+            arr = arr[:, :w * 3].reshape((h, w, 3))
+            # RGB -> BGR pour rester coherent avec OpenCV.
+            return arr[:, :, ::-1].copy()
+        except Exception:
+            return None
+
+    def _array_vers_qpixmap(self, arr):
+        """Convertit un tableau numpy BGR en QPixmap."""
+        h, w = arr.shape[:2]
+        rgb = arr[:, :, ::-1].copy()
+        img = QImage(rgb.data, w, h, 3 * w, QImage.Format_RGB888)
+        return QPixmap.fromImage(img.copy())
+
+    def _difference_qimage(self, ref, autre):
+        """Repli sans OpenCV : difference absolue via QImage."""
+        a = ref.toImage().convertToFormat(QImage.Format_RGB32)
+        b = autre.toImage().convertToFormat(QImage.Format_RGB32)
+        if a.size() != b.size():
+            b = b.scaled(a.width(), a.height())
+        res = QImage(a.width(), a.height(), QImage.Format_RGB32)
+        for y in range(a.height()):
+            for x in range(a.width()):
+                ca = a.pixelColor(x, y)
+                cb = b.pixelColor(x, y)
+                dr = min(255, abs(ca.red() - cb.red()) * 2)
+                dg = min(255, abs(ca.green() - cb.green()) * 2)
+                db = min(255, abs(ca.blue() - cb.blue()) * 2)
+                res.setPixelColor(x, y, QColor(dr, dg, db))
+        return QPixmap.fromImage(res)
+
 class BarreMiniatures(QListWidget):
     reordonne = pyqtSignal(list)
     def __init__(self, parent=None):
@@ -538,23 +1183,126 @@ class BarreMiniatures(QListWidget):
         chemins = [self.item(i).data(Qt.UserRole) for i in range(self.count())]
         self.reordonne.emit(chemins)
 
+class DialogueRaccourcis(QDialog):
+    """Fenetre recapitulative des raccourcis clavier (pour les nouveaux
+    utilisateurs decouvrant le logiciel)."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle(tr("shortcuts_title"))
+        self.resize(440, 520)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(4)
+
+        # Structure : (titre de section, [(touche, description), ...])
+        sections = [
+            (tr("shortcuts_section_general"), [
+                ("F", tr("sc_fullscreen")),
+                ("Ctrl + C", tr("sc_copy")),
+                ("Ctrl + S", tr("sc_export")),
+                ("Suppr / Del", tr("sc_delete_pack")),
+            ]),
+            (tr("shortcuts_section_compare"), [
+                ("Ctrl + " + tr("sc_zoom").split()[0], tr("sc_zoom")),
+                (tr("sc_pan").split()[0], tr("sc_pan")),
+                (tr("img_word") and "Espace / Space", tr("sc_blink")),
+                ("Ctrl + Z", tr("sc_undo")),
+                ("← → ↑ ↓", tr("sc_move_cursor")),
+            ]),
+            (tr("shortcuts_section_compil"), [
+                ("Clic / Click", tr("sc_comp_select")),
+                ("Suppr / Del", tr("sc_comp_delete")),
+                ("Ctrl + Glisser", tr("sc_comp_swap")),
+                ("Glisser / Drag", tr("sc_comp_adjust")),
+                ("Molette / Wheel", tr("sc_comp_zoom_cell")),
+                ("Ctrl + Z", tr("sc_comp_undo")),
+                ("Ctrl + Y", tr("sc_comp_redo")),
+                ("Ctrl + S", tr("sc_comp_export")),
+            ]),
+        ]
+
+        for titre, lignes in sections:
+            lbl_t = QLabel(titre)
+            lbl_t.setStyleSheet("font-weight:bold; font-size:14px; "
+                                "color:#ff8c42; margin-top:10px;")
+            layout.addWidget(lbl_t)
+            for touche, desc in lignes:
+                ligne = QHBoxLayout()
+                lbl_k = QLabel(str(touche))
+                lbl_k.setStyleSheet(
+                    "background-color:#1d2839; border:1px solid #34425a; "
+                    "border-radius:4px; padding:3px 8px; font-weight:bold;")
+                lbl_k.setFixedWidth(150)
+                lbl_k.setAlignment(Qt.AlignCenter)
+                lbl_d = QLabel(desc)
+                lbl_d.setWordWrap(True)
+                ligne.addWidget(lbl_k)
+                ligne.addSpacing(10)
+                ligne.addWidget(lbl_d, 1)
+                layout.addLayout(ligne)
+
+        layout.addStretch()
+        btn = QPushButton(tr("close"))
+        btn.setObjectName("PrimaryButton")
+        btn.clicked.connect(self.accept)
+        h = QHBoxLayout()
+        h.addStretch()
+        h.addWidget(btn)
+        layout.addLayout(h)
+
+
 class DialogueParametres(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.main_window = parent
         self.setWindowTitle(tr("settings_title"))
-        self.resize(320, 280)
+        self.resize(380, 520)
         layout = QVBoxLayout(self)
+
+        # --- SECTION LANGUE ---
+        lbl_lang_sec = QLabel(tr("settings_language_section"))
+        lbl_lang_sec.setStyleSheet("font-weight:bold; color:#ff8c42;")
+        layout.addWidget(lbl_lang_sec)
 
         h_lang = QHBoxLayout()
         h_lang.addWidget(QLabel(tr("language")))
         self.combo_lang = QComboBox()
-        self.combo_lang.addItems(["Français", "English"])
-        self.combo_lang.setCurrentText("Français" if config.get("language") == "fr" else "English")
+        # Remplissage dynamique : toutes les langues connues (integrees + importees).
+        self.codes_langues = []
+        for code in sorted(LANGUAGES.keys()):
+            self.combo_lang.addItem(NOMS_LANGUES.get(code, code), code)
+            self.codes_langues.append(code)
+        # Selectionner la langue courante.
+        cur = config.get("language")
+        if cur in self.codes_langues:
+            self.combo_lang.setCurrentIndex(self.codes_langues.index(cur))
         h_lang.addWidget(self.combo_lang)
         layout.addLayout(h_lang)
-        layout.addSpacing(10)
 
+        # Export / import de fichiers de langue.
+        h_io = QHBoxLayout()
+        btn_exp_lang = QPushButton(tr("settings_export_lang"))
+        btn_exp_lang.clicked.connect(self.exporter_langue)
+        btn_imp_lang = QPushButton(tr("settings_import_lang"))
+        btn_imp_lang.clicked.connect(self.importer_langue)
+        h_io.addWidget(btn_exp_lang)
+        h_io.addWidget(btn_imp_lang)
+        layout.addLayout(h_io)
+
+        lbl_aide = QLabel(tr("settings_translate_help"))
+        lbl_aide.setWordWrap(True)
+        lbl_aide.setStyleSheet("color:#8b97a8; font-size:11px;")
+        layout.addWidget(lbl_aide)
+
+        sep1 = QFrame()
+        sep1.setFrameShape(QFrame.HLine)
+        sep1.setStyleSheet("color:#283750; background:#283750; max-height:1px;")
+        layout.addSpacing(6)
+        layout.addWidget(sep1)
+        layout.addSpacing(6)
+
+        # --- SECTION CURSEUR / LABELS ---
         h_col = QHBoxLayout()
         h_col.addWidget(QLabel(tr("cursor_color")))
         self.btn_col = QPushButton()
@@ -598,13 +1346,46 @@ class DialogueParametres(QDialog):
         h_wm.addWidget(self.edit_wm)
         layout.addLayout(h_wm)
 
+        sep2 = QFrame()
+        sep2.setFrameShape(QFrame.HLine)
+        sep2.setStyleSheet("color:#283750; background:#283750; max-height:1px;")
+        layout.addSpacing(6)
+        layout.addWidget(sep2)
+        layout.addSpacing(6)
+
+        # --- SECTION COMPARATEUR : curseur en direct + zoom loupe ---
+        self.cb_slider_live = QCheckBox(tr("settings_slider_live"))
+        self.cb_slider_live.setChecked(bool(config.get("slider_live")))
+        layout.addWidget(self.cb_slider_live)
+
+        h_loupe = QHBoxLayout()
+        h_loupe.addWidget(QLabel(tr("settings_loupe_zoom")))
+        self.spin_loupe = QSpinBox()
+        self.spin_loupe.setRange(2, 10)
+        self.spin_loupe.setValue(int(config.get("loupe_zoom") or 3))
+        h_loupe.addWidget(self.spin_loupe)
+        layout.addLayout(h_loupe)
+
+        sep3 = QFrame()
+        sep3.setFrameShape(QFrame.HLine)
+        sep3.setStyleSheet("color:#283750; background:#283750; max-height:1px;")
+        layout.addSpacing(6)
+        layout.addWidget(sep3)
+        layout.addSpacing(6)
+
+        # --- BOUTON RACCOURCIS ---
+        btn_sc = QPushButton(tr("settings_shortcuts_btn"))
+        btn_sc.clicked.connect(self.ouvrir_raccourcis)
+        layout.addWidget(btn_sc)
+
+        layout.addStretch()
         btn_box = QHBoxLayout()
         btn_ok = QPushButton(tr("close"))
         btn_ok.setObjectName("PrimaryButton")
         btn_ok.clicked.connect(self.accept)
         btn_box.addStretch()
         btn_box.addWidget(btn_ok)
-        layout.addSpacing(20)
+        layout.addSpacing(10)
         layout.addLayout(btn_box)
 
         self.spin_ep.valueChanged.connect(self.sauvegarder_live)
@@ -612,7 +1393,70 @@ class DialogueParametres(QDialog):
         self.slider_op.valueChanged.connect(self.sauvegarder_live)
         self.cb_watermark.stateChanged.connect(self.sauvegarder_live)
         self.edit_wm.textChanged.connect(self.sauvegarder_live)
-        self.combo_lang.currentTextChanged.connect(self.changer_langue)
+        self.cb_slider_live.stateChanged.connect(self.sauvegarder_live)
+        self.spin_loupe.valueChanged.connect(self.sauvegarder_live)
+        self.combo_lang.currentIndexChanged.connect(self.changer_langue)
+
+    def ouvrir_raccourcis(self):
+        dlg = DialogueRaccourcis(self)
+        dlg.exec_()
+
+    def exporter_langue(self):
+        """Exporte la langue courante comme modele .json a traduire."""
+        code = config.get("language")
+        base = LANGUAGES.get(code) or LANGUAGES.get("en", {})
+        modele = {"_meta": {"code": "xx", "name": "My Language"}}
+        modele.update(base)
+        chemin, _ = QFileDialog.getSaveFileName(
+            self, tr("settings_export_lang"),
+            os.path.join(DOSSIER_LANGUES if os.path.isdir(DOSSIER_LANGUES)
+                         else DOSSIER_SCRIPT, "ma_langue.json"),
+            "JSON (*.json)")
+        if not chemin:
+            return
+        try:
+            with open(chemin, "w", encoding="utf-8") as f:
+                json.dump(modele, f, indent=4, ensure_ascii=False)
+            QMessageBox.information(self, tr("info"),
+                                    tr("settings_lang_exported", path=chemin))
+        except Exception as e:
+            QMessageBox.critical(self, tr("error"), str(e))
+
+    def importer_langue(self):
+        """Importe un fichier .json de langue : il est copie dans le dossier
+        'langues' et ajoute immediatement a la liste."""
+        chemin, _ = QFileDialog.getOpenFileName(
+            self, tr("settings_import_lang"),
+            DOSSIER_LANGUES if os.path.isdir(DOSSIER_LANGUES) else DOSSIER_SCRIPT,
+            "JSON (*.json)")
+        if not chemin:
+            return
+        try:
+            with open(chemin, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            meta = data.get("_meta", {})
+            code = meta.get("code") or os.path.splitext(os.path.basename(chemin))[0]
+            nom = meta.get("name", code)
+            traductions = {k: v for k, v in data.items() if k != "_meta"}
+            # Copie dans le dossier des langues pour persistance.
+            os.makedirs(DOSSIER_LANGUES, exist_ok=True)
+            dest = os.path.join(DOSSIER_LANGUES, "%s.json" % code)
+            with open(dest, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=4, ensure_ascii=False)
+            # Fusion immediate.
+            if code in LANGUAGES:
+                LANGUAGES[code].update(traductions)
+            else:
+                LANGUAGES[code] = traductions
+            NOMS_LANGUES[code] = nom
+            # Ajout a la combo si nouvelle langue.
+            if code not in self.codes_langues:
+                self.combo_lang.addItem(nom, code)
+                self.codes_langues.append(code)
+            QMessageBox.information(self, tr("info"),
+                                    tr("settings_lang_imported", name=nom))
+        except Exception:
+            QMessageBox.critical(self, tr("error"), tr("settings_lang_err"))
 
     def choisir_couleur(self):
         c = QColorDialog.getColor(QColor(config.get("cursor_color")), self, "Color")
@@ -627,13 +1471,109 @@ class DialogueParametres(QDialog):
         config.set("label_bg_opacity", self.slider_op.value())
         config.set("watermark_enabled", self.cb_watermark.isChecked())
         config.set("watermark_text", self.edit_wm.text())
-        if self.main_window: self.main_window.vue_comparateur.update()
+        config.set("slider_live", self.cb_slider_live.isChecked())
+        config.set("loupe_zoom", self.spin_loupe.value())
+        if self.main_window:
+            vc = self.main_window.vue_comparateur
+            # Application immediate des reglages du comparateur.
+            vc.slider_live = self.cb_slider_live.isChecked()
+            vc.loupe_zoom = float(self.spin_loupe.value())
+            vc.update()
 
-    def changer_langue(self, text):
-        new_lang = "fr" if text == "Français" else "en"
-        if new_lang != config.get("language"):
-            config.set("language", new_lang)
-            QMessageBox.information(self, "Information", tr("restart_lang"))
+    def changer_langue(self, index):
+        if 0 <= index < len(self.codes_langues):
+            new_lang = self.codes_langues[index]
+            if new_lang != config.get("language"):
+                config.set("language", new_lang)
+                QMessageBox.information(self, tr("info"), tr("restart_lang"))
+
+class DialogueRecents(QDialog):
+    """Fenetre listant les comparaisons recemment ouvertes. Double-clic
+    ou bouton Ouvrir pour recharger une comparaison dans le comparateur.
+    L'historique persiste entre les sessions (cle 'recent_packs')."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.parent_app = parent
+        self.setWindowTitle(tr("recent_title"))
+        self.resize(460, 480)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(18, 18, 18, 18)
+        layout.setSpacing(8)
+
+        titre = QLabel(tr("recent_title"))
+        titre.setStyleSheet("font-weight:bold; font-size:16px;")
+        layout.addWidget(titre)
+
+        self.liste = QListWidget()
+        self.liste.setIconSize(QSize(48, 48))
+        self.liste.itemDoubleClicked.connect(self._ouvrir_selection)
+        layout.addWidget(self.liste, 1)
+
+        self.recents = config.get("recent_packs") or []
+        self._remplir_liste()
+
+        ligne = QHBoxLayout()
+        self.btn_clear = QPushButton(tr("recent_clear"))
+        self.btn_clear.setObjectName("DangerButton")
+        self.btn_clear.clicked.connect(self._vider_historique)
+        btn_ouvrir = QPushButton(tr("recent_open"))
+        btn_ouvrir.setObjectName("PrimaryButton")
+        btn_ouvrir.clicked.connect(self._ouvrir_selection)
+        btn_fermer = QPushButton(tr("close"))
+        btn_fermer.clicked.connect(self.accept)
+        ligne.addWidget(self.btn_clear)
+        ligne.addStretch()
+        ligne.addWidget(btn_ouvrir)
+        ligne.addWidget(btn_fermer)
+        layout.addLayout(ligne)
+
+    def _remplir_liste(self):
+        """Peuple la liste ; affiche un message si l'historique est vide."""
+        self.liste.clear()
+        if not self.recents:
+            item = QListWidgetItem(tr("recent_empty"))
+            item.setFlags(Qt.NoItemFlags)
+            self.liste.addItem(item)
+            self.btn_clear.setEnabled(False)
+            return
+        self.btn_clear.setEnabled(True)
+        for entree in self.recents:
+            chemins = entree.get("chemins", [])
+            date = entree.get("date", "")
+            libelle = "%s\n%s" % (entree.get("nom", "?"), date)
+            item = QListWidgetItem(libelle)
+            # Vignette : 1re image existante de la comparaison.
+            for c in chemins:
+                if os.path.isfile(c):
+                    pix = QPixmap(c).scaled(48, 48, Qt.KeepAspectRatio,
+                                            Qt.SmoothTransformation)
+                    item.setIcon(QIcon(pix))
+                    break
+            item.setData(Qt.UserRole, chemins)
+            self.liste.addItem(item)
+
+    def _ouvrir_selection(self, *args):
+        """Recharge la comparaison selectionnee puis ferme la fenetre."""
+        item = self.liste.currentItem()
+        if item is None:
+            return
+        chemins = item.data(Qt.UserRole)
+        if not chemins:
+            return
+        self.accept()
+        if self.parent_app is not None:
+            self.parent_app.charger_pack_recent(chemins)
+
+    def _vider_historique(self):
+        """Efface l'historique des recents apres confirmation."""
+        rep = QMessageBox.question(self, tr("recent_clear"),
+                                   tr("clear_confirm"),
+                                   QMessageBox.Yes | QMessageBox.No)
+        if rep == QMessageBox.Yes:
+            self.recents = []
+            config.set("recent_packs", [])
+            self._remplir_liste()
 
 class DialogueExport(QDialog):
     def __init__(self, parent, zoom_actif):
@@ -687,7 +1627,7 @@ class FenetreHeatmap(QWidget):
         layout.setSpacing(0)
 
         toolbar = QFrame()
-        toolbar.setStyleSheet("background-color: #252526; border-bottom: 1px solid #333333;")
+        toolbar.setStyleSheet("background-color: #161f2e; border-bottom: 1px solid #283750;")
         tb_layout = QHBoxLayout(toolbar)
         tb_layout.setContentsMargins(15, 10, 15, 10)
 
@@ -704,7 +1644,7 @@ class FenetreHeatmap(QWidget):
 
         self.lbl_img = QLabel()
         self.lbl_img.setAlignment(Qt.AlignCenter)
-        self.lbl_img.setStyleSheet("background-color: #1e1e1e;")
+        self.lbl_img.setStyleSheet("background-color: #0f1623;")
         self.pixmap_original = QPixmap(chemin_image)
 
         layout.addWidget(toolbar)
@@ -749,7 +1689,10 @@ class LogicielComparateur(QMainWindow):
         btn_nouveau = QPushButton(tr("new_pack"))
         btn_nouveau.setObjectName("PrimaryButton")
         btn_nouveau.clicked.connect(self.parcourir)
-        
+
+        btn_recents = QPushButton(tr("recent_btn"))
+        btn_recents.clicked.connect(self.ouvrir_recents)
+
         btn_supprimer_pack = QPushButton(tr("del_pack"))
         btn_supprimer_pack.clicked.connect(self.supprimer_pack_actuel)
 
@@ -760,6 +1703,7 @@ class LogicielComparateur(QMainWindow):
         layout_gauche.addWidget(lbl_packs)
         layout_gauche.addWidget(self.liste_packs_ui)
         layout_gauche.addWidget(btn_nouveau)
+        layout_gauche.addWidget(btn_recents)
         layout_gauche.addWidget(btn_supprimer_pack)
         layout_gauche.addWidget(btn_vider_liste)
 
@@ -778,6 +1722,18 @@ class LogicielComparateur(QMainWindow):
         btn_centrer = QPushButton(tr("center"))
         btn_centrer.clicked.connect(self.centrer_vue)
 
+        # Selecteur de mode d'affichage : curseur / cote a cote / difference.
+        self.combo_mode = QComboBox()
+        self.combo_mode.addItem(tr("view_mode_slider"), "slider")
+        self.combo_mode.addItem(tr("view_mode_side"), "side")
+        self.combo_mode.addItem(tr("view_mode_diff"), "diff")
+        self.combo_mode.currentIndexChanged.connect(self.changer_mode_affichage)
+
+        # Bouton-bascule de la loupe.
+        self.btn_loupe = QPushButton(tr("loupe_enable"))
+        self.btn_loupe.setCheckable(True)
+        self.btn_loupe.toggled.connect(self.basculer_loupe)
+
         self.btn_reset_align = QPushButton(tr("originals"))
         self.btn_reset_align.clicked.connect(self.annuler_alignement)
         self.btn_reset_align.hide()
@@ -788,11 +1744,12 @@ class LogicielComparateur(QMainWindow):
         btn_heatmap = QPushButton(tr("heatmap_btn"))
         btn_heatmap.clicked.connect(self.generer_heatmap)
 
+        # Bouton mesure de similarite chiffree (SSIM / PSNR / % pixels).
+        btn_similarity = QPushButton(tr("similarity_btn"))
+        btn_similarity.clicked.connect(self.afficher_similarite)
+
         btn_copy = QPushButton(tr("copy"))
         btn_copy.clicked.connect(self.copier_presse_papier)
-
-        btn_param = QPushButton(tr("settings"))
-        btn_param.clicked.connect(self.ouvrir_parametres)
 
         btn_exp = QPushButton(tr("export"))
         btn_exp.setObjectName("PrimaryButton")
@@ -800,12 +1757,14 @@ class LogicielComparateur(QMainWindow):
         
         layout_tb.addWidget(self.btn_ori)
         layout_tb.addWidget(btn_centrer)
+        layout_tb.addWidget(self.combo_mode)
+        layout_tb.addWidget(self.btn_loupe)
         layout_tb.addStretch()
         layout_tb.addWidget(self.btn_reset_align)
         layout_tb.addWidget(btn_align)
         layout_tb.addWidget(btn_heatmap)
+        layout_tb.addWidget(btn_similarity)
         layout_tb.addWidget(btn_copy)
-        layout_tb.addWidget(btn_param)
         layout_tb.addWidget(btn_exp)
 
         self.stack = QStackedWidget()
@@ -854,8 +1813,28 @@ class LogicielComparateur(QMainWindow):
         
         layout_global.addWidget(self.panneau_gauche)
         layout_global.addWidget(zone_droite, 1)
-        
-        self.setCentralWidget(widget_central)
+
+        # --- SYSTEME D'ONGLETS : Comparateur / Compilation ---
+        # widget_central (tout le comparateur) devient l'onglet 1.
+        # Le module de compilation, s'il est present, devient l'onglet 2.
+        self.onglets = QTabWidget()
+        self.onglets.setObjectName("OngletsPrincipaux")
+        self.onglets.addTab(widget_central, "🔍  " + tr("tab_comparateur"))
+
+        if HAS_COMPILATION:
+            self.widget_compilation = compilation_module.creer_widget_compilation(self)
+            self.onglets.addTab(self.widget_compilation,
+                                "🧩  " + tr("tab_compilation"))
+
+        # Bouton Parametres place dans le coin de la barre d'onglets :
+        # toujours visible, quel que soit l'onglet actif et meme sans pack.
+        self.btn_settings_coin = QPushButton(tr("settings"))
+        self.btn_settings_coin.setObjectName("SettingsCorner")
+        self.btn_settings_coin.setCursor(Qt.PointingHandCursor)
+        self.btn_settings_coin.clicked.connect(self.ouvrir_parametres)
+        self.onglets.setCornerWidget(self.btn_settings_coin, Qt.TopRightCorner)
+
+        self.setCentralWidget(self.onglets)
         self.setAcceptDrops(True)
         self.toolbar.hide()
         self.zone_miniatures_globale.hide()
@@ -911,6 +1890,46 @@ class LogicielComparateur(QMainWindow):
         item.setIcon(QIcon(icon))
         self.liste_packs_ui.addItem(item)
         self.liste_packs_ui.setCurrentRow(len(self.packs) - 1)
+        self._enregistrer_recent(nom_pack, chemins)
+
+    def _enregistrer_recent(self, nom_pack, chemins):
+        """Ajoute une comparaison en tete de l'historique des recents.
+        Deduplique sur la liste de chemins, limite a 10 entrees. Cet
+        historique persiste (contrairement a last_packs vide a la
+        fermeture)."""
+        try:
+            recents = config.get("recent_packs") or []
+            # On retire un eventuel doublon (meme jeu d'images).
+            recents = [r for r in recents
+                       if r.get("chemins") != list(chemins)]
+            recents.insert(0, {
+                "nom": nom_pack,
+                "chemins": list(chemins),
+                "date": time.strftime("%Y-%m-%d %H:%M"),
+            })
+            config.set("recent_packs", recents[:10])
+        except Exception:
+            # L'historique est un confort : ne jamais bloquer sur lui.
+            pass
+
+    def ouvrir_recents(self):
+        """Affiche la fenetre listant les comparaisons recentes."""
+        dlg = DialogueRecents(self)
+        dlg.exec_()
+
+    def charger_pack_recent(self, chemins):
+        """Recharge une comparaison depuis l'historique. Les images
+        disparues du disque sont ignorees ; on previent l'utilisateur."""
+        existants = [c for c in chemins if os.path.isfile(c)]
+        if not existants:
+            QMessageBox.warning(self, tr("warning"), tr("recent_gone"))
+            return
+        if len(existants) < 2:
+            QMessageBox.warning(self, tr("warning"), tr("recent_gone"))
+            return
+        if len(existants) != len(chemins):
+            QMessageBox.information(self, tr("warning"), tr("recent_missing"))
+        self.creer_nouveau_pack(existants)
 
     def charger_pack_depuis_liste(self, index):
         if index < 0 or index >= len(self.packs):
@@ -995,7 +2014,126 @@ class LogicielComparateur(QMainWindow):
 
     def centrer_vue(self):
         self.vue_comparateur.reset_ratios()
-        self.vue_comparateur.centrer_vue()
+        if self.vue_comparateur.mode_affichage == "slider":
+            self.vue_comparateur.centrer_vue()
+        else:
+            self.vue_comparateur.centrer_vue_mode()
+            self.vue_comparateur.update()
+
+    def changer_mode_affichage(self, index):
+        """Applique le mode d'affichage choisi dans la barre d'outils."""
+        mode = self.combo_mode.itemData(index)
+        if mode is None:
+            mode = "slider"
+        self.vue_comparateur.definir_mode(mode)
+
+    def basculer_loupe(self, actif):
+        """Active ou desactive la loupe qui suit le curseur."""
+        self.vue_comparateur.loupe_active = bool(actif)
+        self.vue_comparateur.update()
+
+    def afficher_similarite(self):
+        """Calcule SSIM / PSNR / pourcentage de pixels differents entre la
+        reference et chaque autre image, puis affiche un recapitulatif."""
+        if len(self.chemins_actuels) < 2:
+            QMessageBox.warning(self, tr("warning"), tr("similarity_need_two"))
+            return
+        try:
+            import cv2
+            import numpy as np
+        except ImportError:
+            QMessageBox.warning(self, "Erreur / Error", tr("missing_dep"))
+            return
+        try:
+            QApplication.setOverrideCursor(Qt.WaitCursor)
+            ref = cv2.imdecode(np.fromfile(self.chemins_actuels[0], dtype=np.uint8),
+                               cv2.IMREAD_COLOR)
+            ref_gray = cv2.cvtColor(ref, cv2.COLOR_BGR2GRAY)
+            lignes = []
+            for i in range(1, len(self.chemins_actuels)):
+                autre = cv2.imdecode(
+                    np.fromfile(self.chemins_actuels[i], dtype=np.uint8),
+                    cv2.IMREAD_COLOR)
+                if autre.shape != ref.shape:
+                    autre = cv2.resize(autre, (ref.shape[1], ref.shape[0]))
+                autre_gray = cv2.cvtColor(autre, cv2.COLOR_BGR2GRAY)
+                ssim = self._calculer_ssim(ref_gray, autre_gray, np)
+                psnr = self._calculer_psnr(ref, autre, np)
+                diff = cv2.absdiff(ref, autre)
+                pixels_diff = np.count_nonzero(np.any(diff > 8, axis=2))
+                total = ref.shape[0] * ref.shape[1]
+                pct = 100.0 * pixels_diff / total if total else 0.0
+                psnr_txt = "∞" if psnr == float("inf") else "%.2f dB" % psnr
+                lignes.append((i + 1, ssim, psnr_txt, pct))
+            QApplication.restoreOverrideCursor()
+            self._afficher_dialogue_similarite(lignes)
+        except Exception as e:
+            QApplication.restoreOverrideCursor()
+            QMessageBox.critical(self, tr("error"), tr("err_gen", err=str(e)))
+
+    def _calculer_ssim(self, a, b, np):
+        """SSIM global (implementation compacte, sans scikit-image)."""
+        a = a.astype(np.float64)
+        b = b.astype(np.float64)
+        mu_a, mu_b = a.mean(), b.mean()
+        var_a, var_b = a.var(), b.var()
+        cov = ((a - mu_a) * (b - mu_b)).mean()
+        c1 = (0.01 * 255) ** 2
+        c2 = (0.03 * 255) ** 2
+        num = (2 * mu_a * mu_b + c1) * (2 * cov + c2)
+        den = (mu_a ** 2 + mu_b ** 2 + c1) * (var_a + var_b + c2)
+        return num / den if den else 1.0
+
+    def _calculer_psnr(self, a, b, np):
+        """PSNR en decibels entre deux images BGR."""
+        mse = np.mean((a.astype(np.float64) - b.astype(np.float64)) ** 2)
+        if mse == 0:
+            return float("inf")
+        return 20 * np.log10(255.0) - 10 * np.log10(mse)
+
+    def _afficher_dialogue_similarite(self, lignes):
+        """Affiche un dialogue recapitulatif des scores de similarite."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle(tr("similarity_title"))
+        dlg.resize(420, 120 + 90 * len(lignes))
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(18, 18, 18, 18)
+        for (idx, ssim, psnr_txt, pct) in lignes:
+            bloc = QFrame()
+            bloc.setStyleSheet(
+                "QFrame { background-color:#161f2e; border:1px solid #283750;"
+                " border-radius:8px; }")
+            vb = QVBoxLayout(bloc)
+            titre = QLabel(tr("similarity_info", idx=idx))
+            titre.setStyleSheet("font-weight:bold; color:#ff8c42; border:none;")
+            vb.addWidget(titre)
+            for libelle, valeur in [
+                    (tr("similarity_ssim"), "%.4f" % ssim),
+                    (tr("similarity_psnr"), psnr_txt),
+                    (tr("similarity_diffpct"), "%.2f %%" % pct)]:
+                h = QHBoxLayout()
+                lg = QLabel(libelle)
+                lg.setStyleSheet("border:none;")
+                vl = QLabel(valeur)
+                vl.setStyleSheet("font-weight:bold; border:none;")
+                h.addWidget(lg)
+                h.addStretch()
+                h.addWidget(vl)
+                vb.addLayout(h)
+            if ssim >= 0.9999:
+                note = QLabel(tr("similarity_identical"))
+                note.setStyleSheet("color:#46cd82; border:none;")
+                vb.addWidget(note)
+            lay.addWidget(bloc)
+        lay.addStretch()
+        btn = QPushButton(tr("close"))
+        btn.setObjectName("PrimaryButton")
+        btn.clicked.connect(dlg.accept)
+        hb = QHBoxLayout()
+        hb.addStretch()
+        hb.addWidget(btn)
+        lay.addLayout(hb)
+        dlg.exec_()
 
     def aligner_images(self):
         if len(self.chemins_actuels) < 2: return
@@ -1241,6 +2379,11 @@ class LogicielComparateur(QMainWindow):
         else: event.ignore()
 
     def dropEvent(self, event):
+        # Si l'onglet Compilation est actif, on laisse les cellules de
+        # compilation gerer elles-memes le glisser-deposer.
+        if HAS_COMPILATION and self.onglets.currentIndex() != 0:
+            event.ignore()
+            return
         urls = event.mimeData().urls()
         chemins = [u.toLocalFile() for u in urls if u.toLocalFile().lower().endswith(('.png', '.jpg', '.jpeg'))]
         if not chemins: return
@@ -1254,6 +2397,14 @@ class LogicielComparateur(QMainWindow):
             self.actualiser_pack_courant()
 
     def keyPressEvent(self, event):
+        # Si l'onglet Compilation est actif, on ne capture pas Ctrl+S /
+        # Ctrl+C ni Suppr : le widget de compilation gere ses propres
+        # raccourcis (export, vidage de case...).
+        compil_actif = (HAS_COMPILATION and
+                        self.onglets.currentIndex() != 0)
+        if compil_actif:
+            super().keyPressEvent(event)
+            return
         if event.key() == Qt.Key_Delete:
             if self.liste_packs_ui.hasFocus():
                 self.supprimer_pack_actuel()
@@ -1291,29 +2442,85 @@ if __name__ == '__main__':
         chemins_finaux = sorted(list(set(images)))
         
     else:
-        fichiers_args = [f for f in args if os.path.isfile(f) and f.lower().endswith(('.png', '.jpg', '.jpeg'))]
+        fichiers_args = [f for f in args if os.path.isfile(f) and f.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp'))]
         if len(fichiers_args) >= 2:
+            # Cas simple : Windows a transmis plusieurs fichiers d'un coup.
             chemins_finaux = fichiers_args
         elif len(fichiers_args) == 1:
-            fichier_cache = os.path.join(tempfile.gettempdir(), "comparateur_pro_cache.txt")
+            # Cas du clic droit sur une SELECTION : Windows lance une
+            # instance par image, chacune avec un seul fichier. On les
+            # regroupe via un fichier-cache partage.
+            #
+            # Strategie fiabilisee :
+            #  - La 1ere instance cree le cache : elle devient "collecteur"
+            #    et attend un court instant que les autres s'inscrivent.
+            #  - Les instances suivantes voient un cache recent : elles
+            #    ajoutent leur ligne puis se terminent (sys.exit).
+            #  - Le collecteur relit le cache complet et lance le logiciel.
+            fichier_cache = os.path.join(tempfile.gettempdir(),
+                                         "comparateur_pro_cache.txt")
+            fichier_lock = fichier_cache + ".lock"
+            suffixe = "--export-rapide" if mode_export else "--ouvrir"
             try:
-                if os.path.exists(fichier_cache):
+                # Le cache est considere obsolete au-dela de 4 secondes.
+                cache_recent = (os.path.exists(fichier_cache) and
+                                time.time() - os.path.getmtime(fichier_cache) < 4.0)
+                if not cache_recent:
+                    # On purge un eventuel cache perime.
+                    for f in (fichier_cache, fichier_lock):
+                        try:
+                            if os.path.exists(f):
+                                os.remove(f)
+                        except Exception:
+                            pass
+
+                # Tentative de devenir collecteur : creation exclusive du lock.
+                est_collecteur = False
+                if not cache_recent:
                     try:
-                        if time.time() - os.path.getmtime(fichier_cache) > 2.0:
-                            os.remove(fichier_cache)
-                    except: pass
+                        fd = os.open(fichier_lock,
+                                     os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                        os.close(fd)
+                        est_collecteur = True
+                    except FileExistsError:
+                        est_collecteur = False
+                    except Exception:
+                        est_collecteur = False
+
+                # Toutes les instances inscrivent leur image dans le cache.
                 with open(fichier_cache, 'a', encoding='utf-8') as f:
-                    f.write(fichiers_args[0] + '\n')
-                time.sleep(0.5)
-                with open(fichier_cache, 'r', encoding='utf-8') as f:
-                    lignes = [l.strip() for l in f.read().split('\n') if l.strip()]
-                if lignes and lignes[-1] == fichiers_args[0]:
-                    try: os.remove(fichier_cache)
-                    except: pass
-                    chemins_finaux = list(dict.fromkeys(lignes))
+                    f.write("%s\t%s\n" % (suffixe, fichiers_args[0]))
+
+                if est_collecteur:
+                    # Le collecteur laisse aux autres le temps de s'inscrire.
+                    time.sleep(0.9)
+                    try:
+                        with open(fichier_cache, 'r', encoding='utf-8') as f:
+                            brut = [l.strip() for l in f.read().split('\n')
+                                    if l.strip()]
+                    except Exception:
+                        brut = []
+                    # Nettoyage du cache et du lock.
+                    for f in (fichier_cache, fichier_lock):
+                        try:
+                            if os.path.exists(f):
+                                os.remove(f)
+                        except Exception:
+                            pass
+                    # Extraction des chemins (on ignore le prefixe de mode).
+                    chemins = []
+                    for ligne in brut:
+                        parts = ligne.split('\t', 1)
+                        chemins.append(parts[1] if len(parts) == 2 else parts[0])
+                    chemins_finaux = list(dict.fromkeys(chemins))
                 else:
+                    # Instance secondaire : sa contribution est enregistree,
+                    # le collecteur s'occupe du reste. On se termine.
                     sys.exit(0)
-            except Exception as e:
+            except SystemExit:
+                raise
+            except Exception:
+                # En cas de souci, on ouvre au moins l'image transmise.
                 chemins_finaux = fichiers_args
 
     logiciel = LogicielComparateur()

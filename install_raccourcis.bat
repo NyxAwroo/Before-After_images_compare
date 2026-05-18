@@ -14,6 +14,36 @@ echo.
 :: Récupération automatique du chemin actuel
 set "APP_PATH=%~dp0comparateur_app.py"
 
+:: --- VERIFICATION 1 : le fichier principal existe-t-il bien ici ? ---
+if not exist "%APP_PATH%" (
+    color 0C
+    echo [ERREUR] comparateur_app.py est introuvable dans ce dossier.
+    echo          comparateur_app.py was not found in this folder.
+    echo.
+    echo Placez ce .bat dans le meme dossier que comparateur_app.py,
+    echo puis relancez-le. / Put this .bat next to comparateur_app.py.
+    echo.
+    pause
+    exit /b 1
+)
+
+:: --- VERIFICATION 2 : la commande pyw est-elle disponible ? ---
+where pyw >nul 2>&1
+if errorlevel 1 (
+    color 0E
+    echo [ATTENTION] La commande "pyw" est introuvable dans le PATH.
+    echo             "pyw" was not found in your PATH.
+    echo.
+    echo Le menu sera installe, mais le logiciel ne se lancera pas tant
+    echo que Python ne sera pas correctement installe et ajoute au PATH.
+    echo The menu will be installed, but the app will not start until
+    echo Python is properly installed and added to PATH.
+    echo.
+    echo Conseil : reinstallez Python en cochant "Add Python to PATH".
+    echo.
+    pause
+)
+
 echo Veuillez choisir la langue du menu / Choose menu language :
 echo [1] Francais
 echo [2] English
