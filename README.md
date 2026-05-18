@@ -1,6 +1,7 @@
 <div align="center">
 
 # 📸 Comparateur Pro — Before / After Image Compare
+**✨[Sponsor this project](https://www.paypal.com/paypalme/NyxAwroo)**
 
 <p>
   <img src="https://img.shields.io/badge/Langue-Français-007acc?style=for-the-badge" alt="Langue Français">
