@@ -15,6 +15,7 @@ import json
 import glob
 import tempfile
 import locale
+import traceback
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
                              QHBoxLayout, QLabel, QPushButton, QFileDialog, 
                              QStackedWidget, QFrame, QMessageBox, QListWidget, 
@@ -22,7 +23,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QSlider, QColorDialog, QCheckBox, QComboBox, QLineEdit,
                              QTabWidget)
 from PyQt5.QtGui import (QPainter, QPixmap, QPen, QFont, QColor, QCursor, QImage, QIcon)
-from PyQt5.QtCore import Qt, QRect, QRectF, QSize, QBuffer, QIODevice, pyqtSignal
+from PyQt5.QtCore import Qt, QRect, QRectF, QSize, QBuffer, QIODevice, pyqtSignal, QTimer
 
 def global_exception_handler(exctype, value, traceback_obj):
     import traceback
@@ -51,6 +52,17 @@ except ImportError:
 
 DOSSIER_SCRIPT = os.path.dirname(os.path.abspath(__file__))
 FICHIER_CONFIG = os.path.join(DOSSIER_SCRIPT, "comparateur_config.json")
+
+
+def ecrire_log_erreur(contexte, exception):
+    """Ajoute une erreur non bloquante au journal de diagnostic."""
+    try:
+        chemin_log = os.path.join(tempfile.gettempdir(), "comparateur_crash.log")
+        with open(chemin_log, "a", encoding="utf-8") as f:
+            f.write("\n\n[%s] %s\n" % (time.strftime("%Y-%m-%d %H:%M:%S"), contexte))
+            f.write("".join(traceback.format_exception_only(type(exception), exception)))
+    except Exception:
+        pass
 
 # ==========================================
 # DICTIONNAIRE MULTILINGUE (i18n)
@@ -86,6 +98,7 @@ LANGUAGES = {
         "recent_clear": "Clear history",
         "recent_missing": "Some images of this comparison are missing and were skipped.",
         "recent_gone": "None of this comparison's images could be found.",
+        "recent_not_enough": "Not enough valid images remain to open this comparison.",
         "vertical": "⬍ Vertical",
         "horizontal": "⬌ Horizontal",
         "center": "Center",
@@ -113,6 +126,9 @@ LANGUAGES = {
         "err_gif": "Error generating GIF: {err}",
         "err_gen": "Generation error:\n{err}",
         "missing_dep": "Requires OpenCV. Open CMD and type:\npip install opencv-python numpy",
+        "invalid_image_skip": "Unreadable image skipped: {path}",
+        "diff_failed_status": "Pixel difference failed; back to slider mode.",
+        "close_compilation_packs": "Compilation packs are still open. Close anyway?",
         "restart_lang": "Please restart the application to apply the language change.",
         "img_word": "img",
         "warning": "Warning",
@@ -128,7 +144,10 @@ LANGUAGES = {
         "sc_fullscreen": "Toggle fullscreen",
         "sc_copy": "Copy to clipboard",
         "sc_export": "Open export dialog",
+        "sc_quick_export": "Quick 1:1 JPEG export",
         "sc_delete_pack": "Delete selected pack / image",
+        "sc_next_pack": "Next / previous pack",
+        "sc_switch_tabs": "Switch Comparator / Compilation tab",
         "sc_zoom": "Zoom in / out",
         "sc_pan": "Pan the view",
         "sc_blink": "Blink mode (reference vs current)",
@@ -142,6 +161,7 @@ LANGUAGES = {
         "sc_comp_undo": "Undo last action",
         "sc_comp_redo": "Redo last action",
         "sc_comp_export": "Quick export of the compilation",
+        "sc_comp_next_cell": "Select next / previous cell",
         "settings_language_section": "Language",
         "settings_export_lang": "Export language file...",
         "settings_import_lang": "Import language file...",
@@ -170,7 +190,9 @@ LANGUAGES = {
         "similarity_need_two": "At least 2 images are required.",
         "settings_slider_live": "Move the slider live on mouse hover (no click)",
         "settings_loupe_zoom": "Magnifier zoom level:",
+        "settings_pack_overlay": "Show pack name overlay in the image view",
         "export_done_status": "✔ Export saved: {path}",
+        "export_rapide_status": "✔ Quick export saved: {path}",
         "comp_export_status": "✔ Compilation exported: {path}"
     },
     "fr": {
@@ -203,6 +225,7 @@ LANGUAGES = {
         "recent_clear": "Vider l'historique",
         "recent_missing": "Certaines images de cette comparaison sont introuvables et ont été ignorées.",
         "recent_gone": "Aucune image de cette comparaison n'a pu être retrouvée.",
+        "recent_not_enough": "Il ne reste pas assez d'images valides pour ouvrir cette comparaison.",
         "vertical": "⬍ Vertical",
         "horizontal": "⬌ Horizontal",
         "center": "Centrer",
@@ -230,6 +253,9 @@ LANGUAGES = {
         "err_gif": "Erreur GIF : {err}",
         "err_gen": "Erreur de génération :\n{err}",
         "missing_dep": "Nécessite OpenCV. Ouvrez CMD et tapez :\npip install opencv-python numpy",
+        "invalid_image_skip": "Image illisible ignoree : {path}",
+        "diff_failed_status": "Difference de pixels impossible ; retour au mode curseur.",
+        "close_compilation_packs": "Des packs de compilation sont encore ouverts. Fermer quand meme ?",
         "restart_lang": "Veuillez redémarrer l'application pour appliquer le changement de langue.",
         "img_word": "img",
         "warning": "Attention",
@@ -245,7 +271,10 @@ LANGUAGES = {
         "sc_fullscreen": "Basculer en plein ecran",
         "sc_copy": "Copier dans le presse-papier",
         "sc_export": "Ouvrir la fenetre d'export",
+        "sc_quick_export": "Export JPEG 1:1 rapide",
         "sc_delete_pack": "Supprimer le pack / l'image selectionne",
+        "sc_next_pack": "Pack suivant / precedent",
+        "sc_switch_tabs": "Basculer Comparateur / Compilation",
         "sc_zoom": "Zoomer / dezoomer",
         "sc_pan": "Deplacer la vue",
         "sc_blink": "Mode Blink (reference vs vue actuelle)",
@@ -258,6 +287,8 @@ LANGUAGES = {
         "sc_comp_zoom_cell": "Zoomer l'image dans une case (molette)",
         "sc_comp_undo": "Annuler la derniere action",
         "sc_comp_redo": "Retablir la derniere action",
+        "sc_comp_export": "Export rapide de la compilation",
+        "sc_comp_next_cell": "Selectionner la case suivante / precedente",
         "settings_language_section": "Langue",
         "settings_export_lang": "Exporter un fichier de langue...",
         "settings_import_lang": "Importer un fichier de langue...",
@@ -286,7 +317,9 @@ LANGUAGES = {
         "similarity_need_two": "Au moins 2 images sont necessaires.",
         "settings_slider_live": "Deplacer le curseur en direct au survol (sans clic)",
         "settings_loupe_zoom": "Niveau de zoom de la loupe :",
+        "settings_pack_overlay": "Afficher le nom du pack dans la vue image",
         "export_done_status": "✔ Export enregistre : {path}",
+        "export_rapide_status": "✔ Export rapide enregistre : {path}",
         "comp_export_status": "✔ Compilation exportee : {path}"
     }
 }
@@ -328,9 +361,9 @@ def charger_langues_externes():
             else:
                 LANGUAGES[code] = traductions
             NOMS_LANGUES[code] = nom_affiche
-        except Exception:
+        except Exception as e:
             # Un fichier de langue corrompu ne doit pas bloquer le logiciel.
-            pass
+            ecrire_log_erreur("Chargement langue externe: %s" % chemin, e)
 
 
 charger_langues_externes()
@@ -354,6 +387,7 @@ class ConfigManager:
             "watermark_text": "Comparateur Pro",
             "slider_live": False,
             "loupe_zoom": 2.5,
+            "show_pack_name_overlay": True,
             "last_packs": [],
             "last_pack_index": 0,
             "recent_packs": []
@@ -561,6 +595,7 @@ class ComparateurWidget(QWidget):
         self.loupe_zoom = float(config.get("loupe_zoom") or 2.5)
         self.loupe_taille = 200        # diametre de la loupe en pixels
         self.souris_pos = None         # derniere position connue de la souris
+        self.nom_pack = ""
         # Mode "slider en direct" : si actif, le curseur suit la souris au
         # survol (sans clic). Sinon, comportement clic-maintenu classique.
         self.slider_live = bool(config.get("slider_live"))
@@ -572,11 +607,19 @@ class ComparateurWidget(QWidget):
         self.infos_images = []
         for c in chemins:
             pixmap = QPixmap(c)
+            if pixmap.isNull():
+                ecrire_log_erreur(tr("invalid_image_skip", path=c),
+                                  RuntimeError("QPixmap null"))
+                continue
             self.images_originales.append(pixmap)
             taille_mo = os.path.getsize(c) / (1024 * 1024)
             nom = os.path.basename(c)
             info = f"{nom}\n{pixmap.width()} x {pixmap.height()} px\n{taille_mo:.1f} Mo"
             self.infos_images.append(info)
+        if not self.images_originales:
+            self.pixmap_diff = None
+            self.update()
+            return
         # Le pack a change : la difference pre-calculee n'est plus valable.
         self.pixmap_diff = None
         self.reset_ratios()
@@ -631,10 +674,12 @@ class ComparateurWidget(QWidget):
         if self.mode_affichage == "side":
             self._peindre_cote_a_cote(painter)
             self._peindre_loupe(painter)
+            self._peindre_nom_pack(painter)
             return
         if self.mode_affichage == "diff":
             self._peindre_difference(painter)
             self._peindre_loupe(painter)
+            self._peindre_nom_pack(painter)
             return
 
         if getattr(self, 'blink_mode', False):
@@ -642,6 +687,7 @@ class ComparateurWidget(QWidget):
             rect_source = QRect(0, 0, w_orig, h_orig)
             painter.drawPixmap(rect_dest, img_base, rect_source)
             self._peindre_loupe(painter)
+            self._peindre_nom_pack(painter)
             return
 
         orientation = config.get("orientation")
@@ -749,6 +795,21 @@ class ComparateurWidget(QWidget):
 
         # Loupe par-dessus le rendu (mode curseur).
         self._peindre_loupe(painter)
+        self._peindre_nom_pack(painter)
+
+    def _peindre_nom_pack(self, painter):
+        if not config.get("show_pack_name_overlay"):
+            return
+        nom = getattr(self, "nom_pack", "")
+        if not nom:
+            return
+        painter.save()
+        font = QFont("Segoe UI", 11)
+        painter.setFont(font)
+        painter.setPen(QColor(255, 255, 255, 128))
+        rect = QRect(10, 8, self.width() - 20, 24)
+        painter.drawText(rect, Qt.AlignRight | Qt.AlignVCenter, nom)
+        painter.restore()
 
     # ------------------------------------------------------------------
     #  MODE COTE A COTE  (toutes les images alignees, sans curseur)
@@ -892,6 +953,8 @@ class ComparateurWidget(QWidget):
         elif self.mode_affichage == "side":
             # Mode cote a cote : on retrouve l'image survolee.
             rects, _, _ = self._disposition_side()
+            image_proche = None
+            distance_proche = None
             for i, img in enumerate(self.images_originales):
                 rx, ry, rw, rh = rects[i]
                 if rx <= toile_x < rx + rw and ry <= toile_y < ry + rh:
@@ -899,6 +962,18 @@ class ComparateurWidget(QWidget):
                         painter, img, zone,
                         toile_x - rx, toile_y - ry, echelle_loupe)
                     break
+                dx = max(rx - toile_x, 0, toile_x - (rx + rw))
+                dy = max(ry - toile_y, 0, toile_y - (ry + rh))
+                distance = dx * dx + dy * dy
+                if distance_proche is None or distance < distance_proche:
+                    distance_proche = distance
+                    image_proche = (img, rx, ry)
+            else:
+                if image_proche is not None:
+                    img, rx, ry = image_proche
+                    self._loupe_dessiner_pixmap(
+                        painter, img, zone,
+                        toile_x - rx, toile_y - ry, echelle_loupe)
         else:
             # Mode curseur : on dessine, dans la loupe, la tranche d'image
             # correspondant a la position (comme le rendu principal).
@@ -994,7 +1069,8 @@ class ComparateurWidget(QWidget):
                 borne_max = 1.0 if len(self.ratios) == 1 else self.ratios[1] - 0.01
                 self.ratios[0] = max(0.0, min(ratio, borne_max))
                 self.update()
-            self.setCursor(Qt.SplitHCursor if is_vert else Qt.SplitVCursor)
+            if not self.panning:
+                self.setCursor(Qt.SplitHCursor if is_vert else Qt.SplitVCursor)
         else:
             pos_relative = (event.x() - self.pan_x) if is_vert else (event.y() - self.pan_y)
             dim_max = (self.images_originales[0].width() * self.total_zoom) if is_vert else (self.images_originales[0].height() * self.total_zoom)
@@ -1078,9 +1154,15 @@ class ComparateurWidget(QWidget):
             return
         if self.mode_affichage == "side":
             _, virt_w, virt_h = self._disposition_side()
-        elif self.mode_affichage == "diff" and self.pixmap_diff is not None:
-            virt_w = self.pixmap_diff.width()
-            virt_h = self.pixmap_diff.height()
+        elif self.mode_affichage == "diff":
+            if self.pixmap_diff is None or self.pixmap_diff.isNull():
+                self.mode_affichage = "slider"
+                self._message_statut(tr("diff_failed_status"))
+                virt_w = self.images_originales[0].width()
+                virt_h = self.images_originales[0].height()
+            else:
+                virt_w = self.pixmap_diff.width()
+                virt_h = self.pixmap_diff.height()
         else:
             virt_w = self.images_originales[0].width()
             virt_h = self.images_originales[0].height()
@@ -1090,6 +1172,15 @@ class ComparateurWidget(QWidget):
         self.total_zoom = min(zoom_w, zoom_h, 1.0)
         self.pan_x = (vue_w - virt_w * self.total_zoom) / 2
         self.pan_y = (vue_h - virt_h * self.total_zoom) / 2
+
+    def _message_statut(self, message):
+        """Affiche un message discret si la fenetre principale expose une barre."""
+        try:
+            fenetre = self.window()
+            if hasattr(fenetre, "statusBar"):
+                fenetre.statusBar().showMessage(message, 5000)
+        except Exception:
+            pass
 
     def calculer_difference(self):
         """Construit self.pixmap_diff : image de difference absolue entre
@@ -1141,26 +1232,36 @@ class ComparateurWidget(QWidget):
         return QPixmap.fromImage(img.copy())
 
     def _difference_qimage(self, ref, autre):
-        """Repli sans OpenCV : difference absolue via QImage."""
-        a = ref.toImage().convertToFormat(QImage.Format_RGB32)
-        b = autre.toImage().convertToFormat(QImage.Format_RGB32)
-        if a.size() != b.size():
-            b = b.scaled(a.width(), a.height())
-        res = QImage(a.width(), a.height(), QImage.Format_RGB32)
-        for y in range(a.height()):
-            for x in range(a.width()):
-                ca = a.pixelColor(x, y)
-                cb = b.pixelColor(x, y)
-                dr = min(255, abs(ca.red() - cb.red()) * 2)
-                dg = min(255, abs(ca.green() - cb.green()) * 2)
-                db = min(255, abs(ca.blue() - cb.blue()) * 2)
-                res.setPixelColor(x, y, QColor(dr, dg, db))
-        return QPixmap.fromImage(res)
+        """Repli sans OpenCV : difference absolue vectorisee via Pillow."""
+        if HAS_PIL:
+            try:
+                from PIL import ImageChops, ImageEnhance
+                a = ref.toImage().convertToFormat(QImage.Format_RGBA8888)
+                b = autre.toImage().convertToFormat(QImage.Format_RGBA8888)
+                if a.size() != b.size():
+                    b = b.scaled(a.width(), a.height())
+                ptr_a = a.constBits()
+                ptr_a.setsize(a.height() * a.bytesPerLine())
+                ptr_b = b.constBits()
+                ptr_b.setsize(b.height() * b.bytesPerLine())
+                img_a = Image.frombytes("RGBA", (a.width(), a.height()), bytes(ptr_a))
+                img_b = Image.frombytes("RGBA", (b.width(), b.height()), bytes(ptr_b))
+                diff = ImageChops.difference(img_a, img_b).convert("RGB")
+                diff = ImageEnhance.Brightness(diff).enhance(2.0)
+                data = diff.tobytes("raw", "RGB")
+                qimg = QImage(data, diff.width, diff.height,
+                              diff.width * 3, QImage.Format_RGB888)
+                return QPixmap.fromImage(qimg.copy())
+            except Exception as e:
+                ecrire_log_erreur("Difference Pillow", e)
+        self._message_statut(tr("missing_dep"))
+        return QPixmap()
 
 class BarreMiniatures(QListWidget):
     reordonne = pyqtSignal(list)
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.setFocusPolicy(Qt.ClickFocus)
         self.setFlow(QListWidget.LeftToRight)
         self.setIconSize(QSize(80, 80))
         self.setFixedHeight(110)
@@ -1183,6 +1284,10 @@ class BarreMiniatures(QListWidget):
         chemins = [self.item(i).data(Qt.UserRole) for i in range(self.count())]
         self.reordonne.emit(chemins)
 
+    def mousePressEvent(self, event):
+        self.setFocus()
+        super().mousePressEvent(event)
+
 class DialogueRaccourcis(QDialog):
     """Fenetre recapitulative des raccourcis clavier (pour les nouveaux
     utilisateurs decouvrant le logiciel)."""
@@ -1201,9 +1306,12 @@ class DialogueRaccourcis(QDialog):
                 ("F", tr("sc_fullscreen")),
                 ("Ctrl + C", tr("sc_copy")),
                 ("Ctrl + S", tr("sc_export")),
+                ("Ctrl + Shift + S", tr("sc_quick_export")),
+                ("Ctrl + Tab", tr("sc_switch_tabs")),
                 ("Suppr / Del", tr("sc_delete_pack")),
             ]),
             (tr("shortcuts_section_compare"), [
+                ("Tab / Shift + Tab", tr("sc_next_pack")),
                 ("Ctrl + " + tr("sc_zoom").split()[0], tr("sc_zoom")),
                 (tr("sc_pan").split()[0], tr("sc_pan")),
                 (tr("img_word") and "Espace / Space", tr("sc_blink")),
@@ -1216,6 +1324,7 @@ class DialogueRaccourcis(QDialog):
                 ("Ctrl + Glisser", tr("sc_comp_swap")),
                 ("Glisser / Drag", tr("sc_comp_adjust")),
                 ("Molette / Wheel", tr("sc_comp_zoom_cell")),
+                ("Tab / Shift + Tab", tr("sc_comp_next_cell")),
                 ("Ctrl + Z", tr("sc_comp_undo")),
                 ("Ctrl + Y", tr("sc_comp_redo")),
                 ("Ctrl + S", tr("sc_comp_export")),
@@ -1358,6 +1467,10 @@ class DialogueParametres(QDialog):
         self.cb_slider_live.setChecked(bool(config.get("slider_live")))
         layout.addWidget(self.cb_slider_live)
 
+        self.cb_pack_overlay = QCheckBox(tr("settings_pack_overlay"))
+        self.cb_pack_overlay.setChecked(bool(config.get("show_pack_name_overlay")))
+        layout.addWidget(self.cb_pack_overlay)
+
         h_loupe = QHBoxLayout()
         h_loupe.addWidget(QLabel(tr("settings_loupe_zoom")))
         self.spin_loupe = QSpinBox()
@@ -1394,6 +1507,7 @@ class DialogueParametres(QDialog):
         self.cb_watermark.stateChanged.connect(self.sauvegarder_live)
         self.edit_wm.textChanged.connect(self.sauvegarder_live)
         self.cb_slider_live.stateChanged.connect(self.sauvegarder_live)
+        self.cb_pack_overlay.stateChanged.connect(self.sauvegarder_live)
         self.spin_loupe.valueChanged.connect(self.sauvegarder_live)
         self.combo_lang.currentIndexChanged.connect(self.changer_langue)
 
@@ -1472,6 +1586,7 @@ class DialogueParametres(QDialog):
         config.set("watermark_enabled", self.cb_watermark.isChecked())
         config.set("watermark_text", self.edit_wm.text())
         config.set("slider_live", self.cb_slider_live.isChecked())
+        config.set("show_pack_name_overlay", self.cb_pack_overlay.isChecked())
         config.set("loupe_zoom", self.spin_loupe.value())
         if self.main_window:
             vc = self.main_window.vue_comparateur
@@ -1810,6 +1925,17 @@ class LogicielComparateur(QMainWindow):
         layout_principal.addWidget(self.toolbar)
         layout_principal.addWidget(self.stack, 1)
         layout_principal.addWidget(self.zone_miniatures_globale)
+        self.barre_statut_comparateur = QLabel("")
+        self.barre_statut_comparateur.setStyleSheet(
+            "QLabel { background-color:#161f2e; color:#8b97a8; "
+            "border-top:1px solid #283750; padding:5px 12px; "
+            "font-size:12px; }")
+        self.barre_statut_comparateur.setMinimumHeight(28)
+        layout_principal.addWidget(self.barre_statut_comparateur)
+        self._timer_statut_comparateur = QTimer(self)
+        self._timer_statut_comparateur.setSingleShot(True)
+        self._timer_statut_comparateur.timeout.connect(
+            lambda: self.barre_statut_comparateur.setText(""))
         
         layout_global.addWidget(self.panneau_gauche)
         layout_global.addWidget(zone_droite, 1)
@@ -1872,6 +1998,22 @@ class LogicielComparateur(QMainWindow):
         config.set("last_pack_index", self.liste_packs_ui.currentRow())
 
     def closeEvent(self, event):
+        if HAS_COMPILATION and hasattr(self, "widget_compilation"):
+            widget = self.widget_compilation
+            try:
+                widget._sauver_pack_courant()
+                packs_compilation = getattr(widget, "batch_packs", [])
+                if packs_compilation:
+                    rep = QMessageBox.question(
+                        self, tr("warning"), tr("close_compilation_packs"),
+                        QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+                    if rep != QMessageBox.Yes:
+                        event.ignore()
+                        return
+                if hasattr(widget, "sauvegarder_reglages"):
+                    widget.sauvegarder_reglages()
+            except Exception as e:
+                ecrire_log_erreur("Fermeture compilation", e)
         config.set("last_packs", [])
         config.set("last_pack_index", 0)
         super().closeEvent(event)
@@ -1924,11 +2066,11 @@ class LogicielComparateur(QMainWindow):
         if not existants:
             QMessageBox.warning(self, tr("warning"), tr("recent_gone"))
             return
-        if len(existants) < 2:
-            QMessageBox.warning(self, tr("warning"), tr("recent_gone"))
-            return
         if len(existants) != len(chemins):
             QMessageBox.information(self, tr("warning"), tr("recent_missing"))
+        if len(existants) < 2:
+            QMessageBox.warning(self, tr("warning"), tr("recent_not_enough"))
+            return
         self.creer_nouveau_pack(existants)
 
     def charger_pack_depuis_liste(self, index):
@@ -1936,6 +2078,7 @@ class LogicielComparateur(QMainWindow):
             self.stack.setCurrentIndex(0)
             self.toolbar.hide()
             self.zone_miniatures_globale.hide()
+            self.vue_comparateur.nom_pack = ""
             return
         pack = self.packs[index]
         self.chemins_actuels = pack["chemins"]
@@ -1943,6 +2086,7 @@ class LogicielComparateur(QMainWindow):
             self.btn_reset_align.show()
         else:
             self.btn_reset_align.hide()
+        self.vue_comparateur.nom_pack = pack.get("nom", "")
         self.vue_comparateur.charger_images(self.chemins_actuels)
         self.barre_miniatures.charger(self.chemins_actuels)
         self.toolbar.show()
@@ -1971,7 +2115,9 @@ class LogicielComparateur(QMainWindow):
     def ajouter_image_au_pack(self):
         if not self.chemins_actuels: return
         dossier_courant = os.path.dirname(self.chemins_actuels[0])
-        fichiers, _ = QFileDialog.getOpenFileNames(self, "Selection", dossier_courant, "Images (*.png *.jpg *.jpeg)")
+        fichiers, _ = QFileDialog.getOpenFileNames(
+            self, "Selection", dossier_courant,
+            "Images (*.png *.jpg *.jpeg *.webp *.bmp)")
         if fichiers:
             self.chemins_actuels.extend(fichiers)
             self.actualiser_pack_courant()
@@ -1989,7 +2135,18 @@ class LogicielComparateur(QMainWindow):
         self.actualiser_pack_courant()
 
     def reorganiser_images(self, nouveaux_chemins):
-        self.chemins_actuels = nouveaux_chemins
+        chemins_valides = []
+        for chemin in nouveaux_chemins:
+            if os.path.exists(chemin) and not QPixmap(chemin).isNull():
+                chemins_valides.append(chemin)
+            else:
+                ecrire_log_erreur(tr("invalid_image_skip", path=chemin),
+                                  RuntimeError("Chemin invalide"))
+        if len(chemins_valides) < 2:
+            QMessageBox.warning(self, tr("warning"), tr("warn_pack_min"))
+            self.barre_miniatures.charger(self.chemins_actuels)
+            return
+        self.chemins_actuels = chemins_valides
         self.actualiser_pack_courant()
 
     def actualiser_pack_courant(self):
@@ -2026,6 +2183,13 @@ class LogicielComparateur(QMainWindow):
         if mode is None:
             mode = "slider"
         self.vue_comparateur.definir_mode(mode)
+        if self.vue_comparateur.mode_affichage != mode:
+            self.combo_mode.blockSignals(True)
+            for i in range(self.combo_mode.count()):
+                if self.combo_mode.itemData(i) == self.vue_comparateur.mode_affichage:
+                    self.combo_mode.setCurrentIndex(i)
+                    break
+            self.combo_mode.blockSignals(False)
 
     def basculer_loupe(self, actif):
         """Active ou desactive la loupe qui suit le curseur."""
@@ -2237,6 +2401,8 @@ class LogicielComparateur(QMainWindow):
         dlg.exec_() 
 
     def generer_pixmap_export(self, avec_labels, zoom_actif):
+        if not self.vue_comparateur.images_originales:
+            return QPixmap()
         if zoom_actif:
             mem_labels = self.vue_comparateur.afficher_labels
             self.vue_comparateur.afficher_labels = avec_labels
@@ -2251,6 +2417,56 @@ class LogicielComparateur(QMainWindow):
                 rect_text = painter.fontMetrics().boundingRect(QRect(0,0,0,0), Qt.AlignLeft, texte_f)
                 painter.drawText(pix.width() - rect_text.width() - 20, pix.height() - 20, texte_f)
                 painter.end()
+            return pix
+        if self.vue_comparateur.mode_affichage == "diff":
+            pix_diff = self.vue_comparateur.pixmap_diff
+            if pix_diff is None or pix_diff.isNull():
+                return QPixmap()
+            pix = QPixmap(pix_diff)
+            if config.get("watermark_enabled") and config.get("watermark_text"):
+                texte_f = config.get("watermark_text")
+                painter = QPainter(pix)
+                font = QFont("Segoe UI", max(16, pix.height() // 40), QFont.Bold)
+                painter.setFont(font)
+                painter.setPen(QColor(255, 255, 255, 160))
+                rect_text = painter.fontMetrics().boundingRect(QRect(0,0,0,0), Qt.AlignLeft, texte_f)
+                painter.drawText(pix.width() - rect_text.width() - 20, pix.height() - 20, texte_f)
+                painter.end()
+            return pix
+        if self.vue_comparateur.mode_affichage == "side":
+            rects, virt_w, virt_h = self.vue_comparateur._disposition_side()
+            pix = QPixmap(virt_w, virt_h)
+            pix.fill(Qt.transparent)
+            painter = QPainter(pix)
+            painter.setRenderHint(QPainter.SmoothPixmapTransform)
+            for i, img in enumerate(self.vue_comparateur.images_originales):
+                rx, ry, rw, rh = rects[i]
+                painter.drawPixmap(QRect(rx, ry, rw, rh), img,
+                                   QRect(0, 0, img.width(), img.height()))
+            if avec_labels:
+                taille_label_base = config.get("label_size")
+                opacite = config.get("label_bg_opacity")
+                for i, texte in enumerate(self.vue_comparateur.infos_images):
+                    rx, ry, rw, rh = rects[i]
+                    font = QFont("Segoe UI", taille_label_base, QFont.Bold)
+                    painter.setFont(font)
+                    rect_text = painter.fontMetrics().boundingRect(QRect(0,0,0,0), Qt.AlignLeft, texte)
+                    bg_rect = QRect(rx + 5, ry + 5, rect_text.width() + 10,
+                                    rect_text.height() + 10)
+                    painter.setPen(Qt.NoPen)
+                    painter.setBrush(QColor(0, 0, 0, opacite))
+                    painter.drawRoundedRect(bg_rect, 5, 5)
+                    painter.setPen(Qt.white)
+                    painter.drawText(rx + 10, ry + 10, rect_text.width(),
+                                     rect_text.height(), Qt.AlignLeft, texte)
+            if config.get("watermark_enabled") and config.get("watermark_text"):
+                texte_f = config.get("watermark_text")
+                font = QFont("Segoe UI", max(16, virt_h // 40), QFont.Bold)
+                painter.setFont(font)
+                painter.setPen(QColor(255, 255, 255, 160))
+                rect_text = painter.fontMetrics().boundingRect(QRect(0,0,0,0), Qt.AlignLeft, texte_f)
+                painter.drawText(virt_w - rect_text.width() - 20, virt_h - 20, texte_f)
+            painter.end()
             return pix
         img_base = self.vue_comparateur.images_originales[0]
         w_orig, h_orig = img_base.width(), img_base.height()
@@ -2336,7 +2552,7 @@ class LogicielComparateur(QMainWindow):
 
     def ouvrir_export(self):
         if not self.chemins_actuels: return
-        est_zoome = self.vue_comparateur.total_zoom != 1.0 and abs(self.vue_comparateur.pan_x) > 1
+        est_zoome = abs(self.vue_comparateur.total_zoom - 1.0) > 0.01
         dlg = DialogueExport(self, est_zoome)
         if dlg.exec_():
             avec_labels, avec_zoom, ext = dlg.get_resultats()
@@ -2352,6 +2568,9 @@ class LogicielComparateur(QMainWindow):
                 self.exporter_gif(chemin_sav, avec_labels, avec_zoom)
             else:
                 pix = self.generer_pixmap_export(avec_labels, avec_zoom)
+                if pix.isNull():
+                    QMessageBox.critical(self, tr("error"), tr("err_gen", err="Export vide"))
+                    return
                 pix.save(chemin_sav, quality=95)
                 QMessageBox.information(self, tr("success"), tr("exp_success", path=chemin_sav))
 
@@ -2385,7 +2604,9 @@ class LogicielComparateur(QMainWindow):
             event.ignore()
             return
         urls = event.mimeData().urls()
-        chemins = [u.toLocalFile() for u in urls if u.toLocalFile().lower().endswith(('.png', '.jpg', '.jpeg'))]
+        chemins = [u.toLocalFile() for u in urls
+                   if u.toLocalFile().lower().endswith(
+                       ('.png', '.jpg', '.jpeg', '.webp', '.bmp'))]
         if not chemins: return
         if self.stack.currentIndex() == 0 or event.pos().x() < self.panneau_gauche.width():
             if len(chemins) >= 2: 
@@ -2396,7 +2617,51 @@ class LogicielComparateur(QMainWindow):
             self.chemins_actuels.extend(chemins)
             self.actualiser_pack_courant()
 
+    def _statut_comparateur(self, message, succes=True, duree_ms=5000):
+        couleur = "#46cd82" if succes else "#e0483a"
+        self.barre_statut_comparateur.setStyleSheet(
+            "QLabel { background-color:#161f2e; color:%s; "
+            "border-top:1px solid #283750; padding:5px 12px; "
+            "font-size:12px; font-weight:bold; }" % couleur)
+        self.barre_statut_comparateur.setText(message)
+        if duree_ms > 0:
+            self._timer_statut_comparateur.start(duree_ms)
+
+    def export_rapide_comparateur(self):
+        if not self.chemins_actuels:
+            return
+        pix = self.generer_pixmap_export(avec_labels=True, zoom_actif=False)
+        if pix.isNull():
+            self._statut_comparateur(tr("err_gen", err="Export vide"), succes=False)
+            return
+        timestamp = time.strftime("%Y%m%d_%H%M%S")
+        dossier = os.path.dirname(self.chemins_actuels[0])
+        chemin = os.path.join(dossier, "Comparatif_rapide_%s.jpg" % timestamp)
+        compteur = 1
+        while os.path.exists(chemin):
+            chemin = os.path.join(
+                dossier, "Comparatif_rapide_%s_%d.jpg" % (timestamp, compteur))
+            compteur += 1
+        if pix.save(chemin, "JPG", quality=95):
+            self._statut_comparateur(tr("export_rapide_status", path=chemin),
+                                     succes=True)
+        else:
+            self._statut_comparateur(tr("err_gen", err=chemin), succes=False)
+
+    def naviguer_pack(self, delta):
+        total = self.liste_packs_ui.count()
+        if total < 2:
+            return
+        idx = self.liste_packs_ui.currentRow()
+        self.liste_packs_ui.setCurrentRow((idx + delta) % total)
+
     def keyPressEvent(self, event):
+        if (event.key() == Qt.Key_Tab and
+                event.modifiers() == Qt.ControlModifier and
+                self.onglets.count() > 1):
+            self.onglets.setCurrentIndex(
+                (self.onglets.currentIndex() + 1) % self.onglets.count())
+            return
         # Si l'onglet Compilation est actif, on ne capture pas Ctrl+S /
         # Ctrl+C ni Suppr : le widget de compilation gere ses propres
         # raccourcis (export, vidage de case...).
@@ -2405,16 +2670,27 @@ class LogicielComparateur(QMainWindow):
         if compil_actif:
             super().keyPressEvent(event)
             return
+        if (event.key() in (Qt.Key_Tab, Qt.Key_Backtab) and
+                self.liste_packs_ui.count() >= 2):
+            if event.key() == Qt.Key_Backtab or event.modifiers() == Qt.ShiftModifier:
+                self.naviguer_pack(-1)
+            else:
+                self.naviguer_pack(1)
+            return
         if event.key() == Qt.Key_Delete:
             if self.liste_packs_ui.hasFocus():
                 self.supprimer_pack_actuel()
-            elif self.barre_miniatures.hasFocus():
+            elif (self.barre_miniatures.hasFocus() or
+                  self.barre_miniatures.selectedItems()):
                 self.enlever_image_du_pack()
         elif event.key() == Qt.Key_F:
             if self.isFullScreen(): self.showNormal()
             else: self.showFullScreen()
         elif event.key() == Qt.Key_C and event.modifiers() == Qt.ControlModifier:
             self.copier_presse_papier()
+        elif (event.key() == Qt.Key_S and
+              event.modifiers() == (Qt.ControlModifier | Qt.ShiftModifier)):
+            self.export_rapide_comparateur()
         elif event.key() == Qt.Key_S and event.modifiers() == Qt.ControlModifier:
             self.ouvrir_export()
         else:
@@ -2528,6 +2804,8 @@ if __name__ == '__main__':
         if mode_export:
             logiciel.creer_nouveau_pack(chemins_finaux)
             pix = logiciel.generer_pixmap_export(avec_labels=True, zoom_actif=False)
+            if pix.isNull():
+                sys.exit(1)
             timestamp = time.strftime("%Y%m%d_%H%M%S")
             dossier = os.path.dirname(chemins_finaux[0])
             chemin_sav = os.path.join(dossier, f"Export_Rapide_{len(chemins_finaux)}_{timestamp}.jpg")

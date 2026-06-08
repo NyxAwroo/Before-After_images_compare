@@ -33,6 +33,9 @@ import os
 import json
 import copy
 import glob
+import shutil
+import re
+import math
 
 from PyQt5.QtWidgets import (QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
                              QPushButton, QComboBox, QSpinBox, QLineEdit,
@@ -50,6 +53,9 @@ from PyQt5.QtCore import (Qt, QRect, QRectF, QPoint, QMimeData, QTimer,
 # ==============================================================================
 #  INTEGRATION i18n  (textes ajoutes au dictionnaire du module principal)
 # ==============================================================================
+TEMPLATES_LOAD_WARNING = None
+IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg', '.webp', '.bmp')
+
 # Cles prefixees "comp_" pour ne pas entrer en collision avec l'existant.
 COMPILATION_LANG = {
     "en": {
@@ -97,6 +103,8 @@ COMPILATION_LANG = {
         "comp_project_saved": "Project saved:\n{path}",
         "comp_project_loaded": "Project loaded successfully.",
         "comp_project_err": "Project error:\n{err}",
+        "comp_templates_backup": "Template file was unreadable. A backup was created:\n{path}",
+        "comp_missing_image": "Missing image skipped: {path}",
         "comp_export": "Export compilation...",
         "comp_copy": "Copy to clipboard",
         "comp_drop_hint": "Drop an image here",
@@ -156,12 +164,18 @@ COMPILATION_LANG = {
         "comp_batch_generate": "⚙ Generate all boards",
         "comp_batch_rename": "Rename pack",
         "comp_batch_rename_prompt": "Pack name:",
+        "comp_batch_duplicate": "Duplicate",
+        "comp_batch_clear_images": "Clear images",
         "comp_batch_none": "No pack to generate. Add at least one pack first.",
         "comp_batch_no_image": "Pack \"{name}\" is empty and was skipped.",
         "comp_batch_choose_out": "Choose the output folder for the boards",
         "comp_batch_done": "{count} board(s) generated in:\n{path}",
         "comp_batch_err": "Batch error:\n{err}",
         "comp_batch_skipped": "  ({skipped} empty pack(s) skipped)",
+        "comp_batch_drop_created": "{packs} pack(s) created from {images} image(s).",
+        "comp_import_mode": "Import mode",
+        "comp_import_by_template": "📐 By template",
+        "comp_import_dynamic": "🔀 Single board",
         "comp_batch_hint": ("Each pack becomes one board, all sharing the "
                             "current template. Select a pack to edit it, "
                             "drop images into the cells, then generate."),
@@ -211,6 +225,8 @@ COMPILATION_LANG = {
         "comp_project_saved": "Projet enregistre :\n{path}",
         "comp_project_loaded": "Projet charge avec succes.",
         "comp_project_err": "Erreur de projet :\n{err}",
+        "comp_templates_backup": "Le fichier de gabarits etait illisible. Une sauvegarde a ete creee :\n{path}",
+        "comp_missing_image": "Image introuvable ignoree : {path}",
         "comp_export": "Exporter la compilation...",
         "comp_copy": "Copier dans le presse-papier",
         "comp_drop_hint": "Deposez une image ici",
@@ -271,12 +287,18 @@ COMPILATION_LANG = {
         "comp_batch_generate": "⚙ Generer toutes les planches",
         "comp_batch_rename": "Renommer le pack",
         "comp_batch_rename_prompt": "Nom du pack :",
+        "comp_batch_duplicate": "Dupliquer",
+        "comp_batch_clear_images": "Vider les images",
         "comp_batch_none": "Aucun pack a generer. Ajoutez d'abord au moins un pack.",
         "comp_batch_no_image": "Le pack \"{name}\" est vide et a ete ignore.",
         "comp_batch_choose_out": "Choisir le dossier de sortie des planches",
         "comp_batch_done": "{count} planche(s) generee(s) dans :\n{path}",
         "comp_batch_err": "Erreur du traitement par lot :\n{err}",
         "comp_batch_skipped": "  ({skipped} pack(s) vide(s) ignore(s))",
+        "comp_batch_drop_created": "{packs} pack(s) cree(s) depuis {images} image(s).",
+        "comp_import_mode": "Mode d'import",
+        "comp_import_by_template": "📐 Par gabarit",
+        "comp_import_dynamic": "🔀 Planche unique",
         "comp_batch_hint": ("Chaque pack devient une planche, tous partageant "
                             "le gabarit actuel. Selectionnez un pack pour "
                             "l'editer, deposez les images dans les cases, "
@@ -383,6 +405,7 @@ def _templates_file():
 def charger_gabarits():
     """Retourne (templates, favoris, presets_perso). Built-in toujours en
     tete pour les gabarits."""
+    global TEMPLATES_LOAD_WARNING
     chemin = _templates_file()
     templates = [copy.deepcopy(t) for t in DEFAULT_TEMPLATES]
     favoris = []
@@ -403,7 +426,15 @@ def charger_gabarits():
                                           "h": int(p["h"]),
                                           "builtin": False})
         except Exception:
-            pass
+            try:
+                bak = chemin + ".bak"
+                if os.path.exists(bak):
+                    import time
+                    bak = chemin + "." + time.strftime("%Y%m%d_%H%M%S") + ".bak"
+                shutil.copy2(chemin, bak)
+                TEMPLATES_LOAD_WARNING = bak
+            except Exception:
+                TEMPLATES_LOAD_WARNING = chemin
     return templates, favoris, presets_perso
 
 
@@ -534,18 +565,46 @@ def dessiner_label(painter, rect, texte, position, taille_pt, couleur_texte,
     painter.save()
     painter.setClipRect(rect)
 
+    badge, zone_txt, font, fm = _calc_rect_label(
+        rect, position, taille_pt, texte, echelle)
+    painter.setFont(font)
+
+    c_fond = QColor(couleur_fond)
+    c_fond.setAlpha(int(opacite_fond))
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(c_fond)
+    rayon = max(2, int(6 * echelle))
+    painter.drawRoundedRect(badge, rayon, rayon)
+
+    painter.setPen(QColor(couleur_texte))
+    ty = zone_txt.y()
+    for ligne in texte.split("\n"):
+        rect_ligne = QRectF(zone_txt.x(), ty, zone_txt.width(), fm.height())
+        if position in ("tc", "bc"):
+            align = Qt.AlignHCenter
+        elif position in ("tr", "br"):
+            align = Qt.AlignRight
+        else:
+            align = Qt.AlignLeft
+        painter.drawText(rect_ligne, align | Qt.AlignVCenter, ligne)
+        ty += fm.height()
+
+    painter.restore()
+
+
+def _calc_rect_label(rect, position, taille_pt, texte, echelle=1.0):
+    """Calcule le rectangle reel du badge d'etiquette et sa zone texte."""
+    rect = QRectF(rect)
     pt = max(6, int(taille_pt * echelle))
     font = QFont("Segoe UI", pt, QFont.Bold)
-    painter.setFont(font)
     fm = QFontMetrics(font)
     marge = max(2, int(8 * echelle))
     pad_x = max(3, int(10 * echelle))
     pad_y = max(2, int(6 * echelle))
 
-    lignes = texte.split("\n")
+    lignes = texte.split("\n") if texte else [""]
     larg_txt = max(fm.horizontalAdvance(l) for l in lignes)
     haut_txt = fm.height() * len(lignes)
-
     bg_w = larg_txt + pad_x * 2
     bg_h = haut_txt + pad_y * 2
 
@@ -561,27 +620,9 @@ def dessiner_label(painter, rect, texte, position, taille_pt, couleur_texte,
     else:
         by = rect.y() + rect.height() - bg_h - marge
 
-    c_fond = QColor(couleur_fond)
-    c_fond.setAlpha(int(opacite_fond))
-    painter.setPen(Qt.NoPen)
-    painter.setBrush(c_fond)
-    rayon = max(2, int(6 * echelle))
-    painter.drawRoundedRect(QRectF(bx, by, bg_w, bg_h), rayon, rayon)
-
-    painter.setPen(QColor(couleur_texte))
-    ty = by + pad_y
-    for ligne in lignes:
-        rect_ligne = QRectF(bx + pad_x, ty, larg_txt, fm.height())
-        if position in ("tc", "bc"):
-            align = Qt.AlignHCenter
-        elif position in ("tr", "br"):
-            align = Qt.AlignRight
-        else:
-            align = Qt.AlignLeft
-        painter.drawText(rect_ligne, align | Qt.AlignVCenter, ligne)
-        ty += fm.height()
-
-    painter.restore()
+    badge = QRectF(bx, by, bg_w, bg_h)
+    zone_txt = QRectF(bx + pad_x, by + pad_y, larg_txt, haut_txt)
+    return badge, zone_txt, font, fm
 
 
 def _resoudre_texte_label(cell):
@@ -598,6 +639,46 @@ def _resoudre_texte_label(cell):
     if mode == "manual":
         return cell.label_text or ""
     return ""
+
+
+def _cle_tri_naturel(chemin):
+    """Tri lisible des chemins contenant des nombres."""
+    morceaux = re.split(r"(\d+)", chemin.lower())
+    return [int(m) if m.isdigit() else m for m in morceaux]
+
+
+class VoletPacksCompilation(QFrame):
+    """QFrame acceptant le drop d'images pour creer des packs."""
+    def __init__(self, owner):
+        super().__init__(owner)
+        self.owner = owner
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        self.owner._drag_packs_enter(event)
+
+    def dragMoveEvent(self, event):
+        self.owner._drag_packs_enter(event)
+
+    def dropEvent(self, event):
+        self.owner._drop_images_packs(event)
+
+
+class ListePacksCompilation(QListWidget):
+    """Liste de packs acceptant le meme drop que le volet."""
+    def __init__(self, owner):
+        super().__init__(owner)
+        self.owner = owner
+        self.setAcceptDrops(True)
+
+    def dragEnterEvent(self, event):
+        self.owner._drag_packs_enter(event)
+
+    def dragMoveEvent(self, event):
+        self.owner._drag_packs_enter(event)
+
+    def dropEvent(self, event):
+        self.owner._drop_images_packs(event)
 
 
 # ==============================================================================
@@ -839,14 +920,29 @@ class CelluleImage(QWidget):
         # Import d'un fichier image.
         for u in md.urls():
             chemin = u.toLocalFile()
-            if chemin.lower().endswith(('.png', '.jpg', '.jpeg', '.webp', '.bmp')):
+            if chemin.lower().endswith(IMAGE_EXTENSIONS):
                 self.definir_image(chemin)
                 break
         self.update()
 
     # --- Zone cliquable de l'etiquette ---
     def _rect_etiquette(self):
-        """Petite zone en bas de la case ou l'on clique pour editer le label."""
+        """Zone cliquable reelle du badge d'etiquette."""
+        style = None
+        if self.fournisseur_style_label is not None:
+            try:
+                style = self.fournisseur_style_label()
+            except Exception:
+                style = None
+        texte = _resoudre_texte_label(self)
+        if style and style.get("enabled") and texte:
+            badge, _, _, _ = _calc_rect_label(
+                QRectF(0, 0, self.width(), self.height()),
+                style.get("position", "bl"),
+                style.get("size", 16),
+                texte,
+                echelle=1.0)
+            return badge.toAlignedRect()
         h = max(22, int(self.height() * 0.18))
         return QRect(0, self.height() - h, self.width(), h)
 
@@ -1067,6 +1163,8 @@ class GrilleCompilation(QWidget):
         """Reconstruit la grille en conservant le contenu des cases existantes."""
         anciens_etats = [c.etat_serialisable() for c in self.cellules]
         for c in self.cellules:
+            if hasattr(c, "_timer_zoom"):
+                c._timer_zoom.stop()
             c.setParent(None)
             c.deleteLater()
         self.cellules = []
@@ -1499,6 +1597,10 @@ class WidgetCompilation(QWidget):
         self._maj_grille_separateur()
         self._maj_etat_bordure()
         self._maj_etat_filigrane()
+        cfg = _cfg()
+        reglages_sauves = cfg.get("compilation_settings") if cfg is not None else None
+        if isinstance(reglages_sauves, dict):
+            self._appliquer_reglages_planche(reglages_sauves)
 
         # --- Historique annuler / retablir ---
         # Pile d'instantanes de la planche. _hist_index pointe sur l'etat
@@ -1507,6 +1609,10 @@ class WidgetCompilation(QWidget):
         self._hist_index = -1
         self._hist_gel = False
         self._enregistrer_historique()  # etat initial
+        if TEMPLATES_LOAD_WARNING:
+            self._statut(ct("comp_templates_backup",
+                            path=TEMPLATES_LOAD_WARNING),
+                         succes=False, duree_ms=10000)
 
     # ------------------------------------------------------------------
     #  HELPERS DE CONSTRUCTION
@@ -1545,6 +1651,10 @@ class WidgetCompilation(QWidget):
     # ------------------------------------------------------------------
     def _construire_section_gabarits(self, layout):
         layout.addWidget(self._titre(ct("comp_templates")))
+        self.edit_filtre_templates = QLineEdit()
+        self.edit_filtre_templates.setPlaceholderText("Filtrer...")
+        self.edit_filtre_templates.textChanged.connect(self._filtrer_gabarits)
+        layout.addWidget(self.edit_filtre_templates)
         self.combo_templates = QComboBox()
         self._remplir_combo_templates()
         self.combo_templates.currentIndexChanged.connect(self._appliquer_template_courant)
@@ -1643,6 +1753,8 @@ class WidgetCompilation(QWidget):
 
         self.cb_ratio_lock = QCheckBox(ct("comp_ratio_lock"))
         self.cb_ratio_lock.setChecked(False)
+        self._ratio_sortie = self.spin_w.value() / self.spin_h.value()
+        self.cb_ratio_lock.stateChanged.connect(self._memoriser_ratio_sortie)
         layout.addWidget(self.cb_ratio_lock)
 
     # ------------------------------------------------------------------
@@ -1846,7 +1958,7 @@ class WidgetCompilation(QWidget):
         """Construit le volet lateral listant les packs de compilation.
         Chaque pack deviendra une planche ; tous partagent le gabarit
         actuel. Retourne le QFrame pret a etre insere dans le layout."""
-        volet = QFrame()
+        volet = VoletPacksCompilation(self)
         volet.setObjectName("Sidebar")
         volet.setStyleSheet("QFrame#Sidebar { background-color: %s; }"
                             % COL_PANNEAU)
@@ -1866,11 +1978,36 @@ class WidgetCompilation(QWidget):
         aide.setWordWrap(True)
         v.addWidget(aide)
 
+        mode_label = QLabel(ct("comp_import_mode"))
+        mode_label.setStyleSheet("color:%s; font-size:11px; font-weight:bold;"
+                                 % COL_TEXTE_DOUX)
+        v.addWidget(mode_label)
+
+        h_mode = QHBoxLayout()
+        h_mode.setSpacing(4)
+        self.groupe_import_mode = QButtonGroup(self)
+        self.rb_import_gabarit = QRadioButton(ct("comp_import_by_template"))
+        self.rb_import_dynamique = QRadioButton(ct("comp_import_dynamic"))
+        self.groupe_import_mode.addButton(self.rb_import_gabarit)
+        self.groupe_import_mode.addButton(self.rb_import_dynamique)
+        cfg = _cfg()
+        mode_import = (cfg.get("compilation_import_mode")
+                       if cfg is not None else None) or "gabarit"
+        self.rb_import_dynamique.setChecked(mode_import == "dynamique")
+        self.rb_import_gabarit.setChecked(mode_import != "dynamique")
+        self.rb_import_gabarit.toggled.connect(self._sauver_mode_import)
+        self.rb_import_dynamique.toggled.connect(self._sauver_mode_import)
+        h_mode.addWidget(self.rb_import_gabarit)
+        h_mode.addWidget(self.rb_import_dynamique)
+        v.addLayout(h_mode)
+
         # Liste des packs : nom + vignette ; double-clic pour renommer.
-        self.liste_packs = QListWidget()
+        self.liste_packs = ListePacksCompilation(self)
         self.liste_packs.setIconSize(QSize(46, 46))
         self.liste_packs.currentRowChanged.connect(self._changer_pack)
         self.liste_packs.itemDoubleClicked.connect(self._renommer_pack)
+        self.liste_packs.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.liste_packs.customContextMenuRequested.connect(self._menu_pack)
         v.addWidget(self.liste_packs, 1)
 
         # Boutons d'ajout / suppression de pack.
@@ -1897,15 +2034,36 @@ class WidgetCompilation(QWidget):
     #  GABARITS
     # ==================================================================
     def _remplir_combo_templates(self):
+        filtre = ""
+        if hasattr(self, "edit_filtre_templates"):
+            filtre = self.edit_filtre_templates.text().strip().lower()
+        courant = self.combo_templates.currentData()
+        if courant is None:
+            courant = self.combo_templates.currentIndex()
         self.combo_templates.blockSignals(True)
         self.combo_templates.clear()
-        for t in self.templates:
+        index_a_restaurer = -1
+        for idx, t in enumerate(self.templates):
+            if filtre and filtre not in t["name"].lower():
+                continue
             suffixe = "  " + ct("comp_builtin") if t.get("builtin") else ""
-            self.combo_templates.addItem(t["name"] + suffixe)
+            self.combo_templates.addItem(t["name"] + suffixe, idx)
+            if idx == courant:
+                index_a_restaurer = self.combo_templates.count() - 1
+        if index_a_restaurer >= 0:
+            self.combo_templates.setCurrentIndex(index_a_restaurer)
+        elif self.combo_templates.count() > 0:
+            self.combo_templates.setCurrentIndex(0)
         self.combo_templates.blockSignals(False)
 
+    def _filtrer_gabarits(self, texte):
+        self._remplir_combo_templates()
+        self._appliquer_template_courant()
+
     def _appliquer_template_courant(self):
-        idx = self.combo_templates.currentIndex()
+        idx = self.combo_templates.currentData()
+        if idx is None:
+            idx = self.combo_templates.currentIndex()
         if idx < 0 or idx >= len(self.templates):
             return
         t = self.templates[idx]
@@ -1945,28 +2103,82 @@ class WidgetCompilation(QWidget):
             self.btn_orientation.setText(ct("comp_orientation_v"))
 
     def _nouveau_gabarit(self):
-        nom, ok = QInputDialog.getText(self, ct("comp_new_template"),
-                                       ct("comp_template_name"))
-        if not ok or not nom.strip():
+        resultat = self._demander_infos_gabarit(
+            ct("comp_new_template"), avec_dimensions=True)
+        if resultat is None:
             return
-        nom = nom.strip()
+        nom, rows, cols = resultat
+        self._ajouter_gabarit_complet(nom, rows, cols)
+
+    def _demander_infos_gabarit(self, titre, avec_dimensions=False):
+        """Demande les infos d'un gabarit en une seule validation."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle(titre)
+        layout = QVBoxLayout(dlg)
+        layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSpacing(8)
+
+        layout.addWidget(QLabel(ct("comp_template_name")))
+        edit_nom = QLineEdit()
+        layout.addWidget(edit_nom)
+
+        spin_rows = None
+        spin_cols = None
+        if avec_dimensions:
+            ligne_dims = QHBoxLayout()
+            spin_rows = QSpinBox()
+            spin_rows.setRange(1, 10)
+            spin_rows.setValue(self.spin_rows.value())
+            spin_cols = QSpinBox()
+            spin_cols.setRange(1, 10)
+            spin_cols.setValue(self.spin_cols.value())
+            ligne_dims.addWidget(QLabel(ct("comp_rows")))
+            ligne_dims.addWidget(spin_rows)
+            ligne_dims.addWidget(QLabel(ct("comp_cols")))
+            ligne_dims.addWidget(spin_cols)
+            layout.addLayout(ligne_dims)
+
+        boutons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        boutons.button(QDialogButtonBox.Ok).setText(ct("comp_ok"))
+        boutons.button(QDialogButtonBox.Cancel).setText(ct("comp_cancel"))
+        boutons.accepted.connect(dlg.accept)
+        boutons.rejected.connect(dlg.reject)
+        layout.addWidget(boutons)
+
+        if dlg.exec_() != QDialog.Accepted:
+            return None
+        nom = edit_nom.text().strip()
+        if not nom:
+            return None
         if any(t["name"] == nom for t in self.templates):
-            QMessageBox.warning(self, ct("comp_new_template"),
-                                ct("comp_template_exists"))
-            return
-        rows, ok2 = QInputDialog.getInt(self, ct("comp_new_template"),
-                                        ct("comp_rows"), 2, 1, 10)
-        if not ok2:
-            return
-        cols, ok3 = QInputDialog.getInt(self, ct("comp_new_template"),
-                                        ct("comp_cols"), 2, 1, 10)
-        if not ok3:
-            return
-        self.templates.append({"name": nom, "rows": rows, "cols": cols,
-                               "builtin": False})
+            QMessageBox.warning(self, titre, ct("comp_template_exists"))
+            return None
+        rows = spin_rows.value() if spin_rows is not None else self.spin_rows.value()
+        cols = spin_cols.value() if spin_cols is not None else self.spin_cols.value()
+        return nom, rows, cols
+
+    def _ajouter_gabarit_complet(self, nom, rows, cols):
+        """Ajoute un gabarit utilisateur complet depuis les reglages courants."""
+        reglages = self._reglages_planche()
+        reglages["rows"] = int(rows)
+        reglages["cols"] = int(cols)
+        self.templates.append({
+            "name": nom,
+            "rows": int(rows),
+            "cols": int(cols),
+            "builtin": False,
+            "settings": reglages,
+        })
         sauver_gabarits(self.templates, self.favoris, self.presets_perso)
+        if hasattr(self, "edit_filtre_templates"):
+            self.edit_filtre_templates.blockSignals(True)
+            self.edit_filtre_templates.clear()
+            self.edit_filtre_templates.blockSignals(False)
         self._remplir_combo_templates()
-        self.combo_templates.setCurrentIndex(len(self.templates) - 1)
+        for i in range(self.combo_templates.count()):
+            if self.combo_templates.itemData(i) == len(self.templates) - 1:
+                self.combo_templates.setCurrentIndex(i)
+                break
 
     def _reglages_planche(self):
         """Retourne un dictionnaire de TOUS les reglages du volet (hors
@@ -1997,6 +2209,12 @@ class WidgetCompilation(QWidget):
             "label_bg_color": self.label_bg_color,
             "label_bg_opacity": self.slider_label_op.value(),
         }
+
+    def sauvegarder_reglages(self):
+        """Persiste les reglages du volet compilation dans la configuration."""
+        cfg = _cfg()
+        if cfg is not None:
+            cfg.set("compilation_settings", self._reglages_planche())
 
     def _appliquer_reglages_planche(self, r):
         """Applique un dictionnaire de reglages de planche au volet et a la
@@ -2097,30 +2315,18 @@ class WidgetCompilation(QWidget):
         self._rafraichir_apercu()
 
     def _sauver_gabarit_courant(self):
-        nom, ok = QInputDialog.getText(self, ct("comp_save_template"),
-                                       ct("comp_template_name"))
-        if not ok or not nom.strip():
+        resultat = self._demander_infos_gabarit(
+            ct("comp_save_template"), avec_dimensions=False)
+        if resultat is None:
             return
-        nom = nom.strip()
-        if any(t["name"] == nom for t in self.templates):
-            QMessageBox.warning(self, ct("comp_save_template"),
-                                ct("comp_template_exists"))
-            return
-        # Le gabarit capture TOUS les reglages du volet, pas seulement la
-        # disposition : format, separateur, bordure, filigrane, etiquettes.
-        self.templates.append({
-            "name": nom,
-            "rows": self.spin_rows.value(),
-            "cols": self.spin_cols.value(),
-            "builtin": False,
-            "settings": self._reglages_planche(),
-        })
-        sauver_gabarits(self.templates, self.favoris, self.presets_perso)
-        self._remplir_combo_templates()
-        self.combo_templates.setCurrentIndex(len(self.templates) - 1)
+        nom, rows, cols = resultat
+        self._ajouter_gabarit_complet(
+            nom, rows, cols)
 
     def _supprimer_gabarit(self):
-        idx = self.combo_templates.currentIndex()
+        idx = self.combo_templates.currentData()
+        if idx is None:
+            idx = self.combo_templates.currentIndex()
         if idx < 0 or idx >= len(self.templates):
             return
         t = self.templates[idx]
@@ -2260,7 +2466,9 @@ class WidgetCompilation(QWidget):
     def _dimensions_modifiees(self, valeur=None):
         if self.cb_ratio_lock.isChecked():
             sender = self.sender()
-            ratio = self.grille.ratio
+            ratio = getattr(self, "_ratio_sortie", None)
+            if not ratio:
+                ratio = self.spin_w.value() / max(1, self.spin_h.value())
             if sender is self.spin_w:
                 self.spin_h.blockSignals(True)
                 self.spin_h.setValue(max(64, int(self.spin_w.value() / ratio)))
@@ -2276,6 +2484,9 @@ class WidgetCompilation(QWidget):
                 self.combo_preset.setCurrentIndex(self._index_libre())
                 self.combo_preset.blockSignals(False)
         self._maj_ratio_grille()
+
+    def _memoriser_ratio_sortie(self, valeur=None):
+        self._ratio_sortie = self.spin_w.value() / max(1, self.spin_h.value())
 
     def _inverser_largeur_hauteur(self):
         """Echange les valeurs largeur et hauteur du format de sortie."""
@@ -2297,6 +2508,8 @@ class WidgetCompilation(QWidget):
         w, h = self.spin_w.value(), self.spin_h.value()
         if h > 0:
             self.grille.definir_ratio(w / h)
+            if not self.cb_ratio_lock.isChecked():
+                self._ratio_sortie = w / h
 
     # ==================================================================
     #  APPARENCE
@@ -2467,7 +2680,8 @@ class WidgetCompilation(QWidget):
         """Garde la superposition du filigrane a la meme taille que la grille
         et toujours au premier plan."""
         if obj is getattr(self, "grille", None) and hasattr(self, "overlay_filigrane"):
-            if event.type() in (event.Resize, event.Show, event.ChildAdded):
+            if event.type() in (event.Resize, event.Show, event.ChildAdded,
+                                event.ChildRemoved):
                 self.overlay_filigrane.setGeometry(self.grille.rect())
                 self.overlay_filigrane.raise_()
         return super().eventFilter(obj, event)
@@ -2612,6 +2826,124 @@ class WidgetCompilation(QWidget):
     #  self.batch_index pointe sur le pack actuellement charge dans la
     #  grille (-1 = aucun).
     # ==================================================================
+    def _mode_import_packs(self):
+        if getattr(self, "rb_import_dynamique", None) is not None:
+            return "dynamique" if self.rb_import_dynamique.isChecked() else "gabarit"
+        return "gabarit"
+
+    def _sauver_mode_import(self, checked=False):
+        if not checked:
+            return
+        cfg = _cfg()
+        if cfg is not None:
+            cfg.set("compilation_import_mode", self._mode_import_packs())
+
+    def _etat_case_vide(self, chemin=None):
+        return {"chemin": chemin, "offset_x": 0.5, "offset_y": 0.5,
+                "cell_zoom": 1.0, "rotation": 0,
+                "label_mode": "auto", "label_text": ""}
+
+    def _mime_contient_images(self, mime):
+        if not mime or not mime.hasUrls():
+            return False
+        for url in mime.urls():
+            chemin = url.toLocalFile()
+            if chemin and chemin.lower().endswith(IMAGE_EXTENSIONS):
+                return True
+        return False
+
+    def _chemins_images_depuis_mime(self, mime):
+        chemins = []
+        vus = set()
+        if not mime or not mime.hasUrls():
+            return chemins
+        for url in mime.urls():
+            chemin = url.toLocalFile()
+            cle = os.path.normcase(os.path.abspath(chemin)) if chemin else ""
+            if (chemin and cle not in vus and os.path.isfile(chemin)
+                    and chemin.lower().endswith(IMAGE_EXTENSIONS)):
+                pix = QPixmap(chemin)
+                if not pix.isNull():
+                    vus.add(cle)
+                    chemins.append(chemin)
+        return sorted(chemins, key=_cle_tri_naturel)
+
+    def _drag_packs_enter(self, event):
+        if self._mime_contient_images(event.mimeData()):
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def _drop_images_packs(self, event):
+        chemins = self._chemins_images_depuis_mime(event.mimeData())
+        if not chemins:
+            event.ignore()
+            return
+        if self._mode_import_packs() == "dynamique":
+            nb_packs = self._creer_pack_dynamique_depuis_images(chemins)
+        else:
+            nb_packs = self._creer_packs_depuis_images(chemins)
+        self._statut(ct("comp_batch_drop_created",
+                        packs=nb_packs, images=len(chemins)),
+                     succes=True, duree_ms=5000)
+        event.acceptProposedAction()
+
+    def _creer_packs_depuis_images(self, chemins):
+        """Cree des packs par groupes de rows*cols images."""
+        self._sauver_pack_courant()
+        nb_cases = max(1, self.grille.rows * self.grille.cols)
+        premier_index = len(self.batch_packs)
+        nb_crees = 0
+        for debut in range(0, len(chemins), nb_cases):
+            groupe = chemins[debut:debut + nb_cases]
+            cases = []
+            for i in range(nb_cases):
+                chemin = groupe[i] if i < len(groupe) else None
+                cases.append(self._etat_case_vide(chemin))
+            self.batch_packs.append({
+                "nom": ct("comp_batch_pack_name",
+                          n=len(self.batch_packs) + 1),
+                "cases": cases,
+            })
+            nb_crees += 1
+        self._rafraichir_liste_packs()
+        if nb_crees:
+            self.liste_packs.setCurrentRow(premier_index)
+        return nb_crees
+
+    def _creer_pack_dynamique_depuis_images(self, chemins):
+        """Cree un seul pack et adapte la grille au nombre d'images."""
+        self._sauver_pack_courant()
+        n = max(1, len(chemins))
+        cols = int(math.ceil(math.sqrt(n)))
+        rows = int(math.ceil(n / cols))
+        nb_cases = rows * cols
+
+        self.spin_rows.blockSignals(True)
+        self.spin_cols.blockSignals(True)
+        self.spin_rows.setMaximum(max(self.spin_rows.maximum(), rows))
+        self.spin_cols.setMaximum(max(self.spin_cols.maximum(), cols))
+        self.spin_rows.setValue(rows)
+        self.spin_cols.setValue(cols)
+        self.spin_rows.blockSignals(False)
+        self.spin_cols.blockSignals(False)
+        self.grille.appliquer_gabarit(rows, cols)
+        self._maj_texte_orientation()
+
+        cases = []
+        for i in range(nb_cases):
+            chemin = chemins[i] if i < len(chemins) else None
+            cases.append(self._etat_case_vide(chemin))
+
+        premier_index = len(self.batch_packs)
+        self.batch_packs.append({
+            "nom": ct("comp_batch_pack_name", n=len(self.batch_packs) + 1),
+            "cases": cases,
+        })
+        self._rafraichir_liste_packs()
+        self.liste_packs.setCurrentRow(premier_index)
+        return 1
+
     def _cases_serialisees(self):
         """Retourne l'etat serialisable des cellules de la grille (images,
         cadrage, rotation, etiquettes). Meme forme que _etat_projet."""
@@ -2630,23 +2962,36 @@ class WidgetCompilation(QWidget):
         """Applique une liste d'etats de cellules a la grille actuelle.
         Les cases excedentaires sont videes ; une image introuvable est
         ignoree sans bloquer."""
+        manquants = []
         for i, cell in enumerate(self.grille.cellules):
-            if i < len(cases):
-                info = cases[i]
-                chemin_img = info.get("chemin")
-                if chemin_img and os.path.exists(chemin_img):
-                    cell.definir_image(chemin_img)
-                    cell.offset_x = info.get("offset_x", 0.5)
-                    cell.offset_y = info.get("offset_y", 0.5)
-                    cell.cell_zoom = info.get("cell_zoom", 1.0)
-                    cell.rotation = int(info.get("rotation", 0)) % 360
+            precedent = cell.blockSignals(True)
+            try:
+                if i < len(cases):
+                    info = cases[i]
+                    chemin_img = info.get("chemin")
+                    if chemin_img and os.path.exists(chemin_img):
+                        if cell.definir_image(chemin_img):
+                            cell.offset_x = info.get("offset_x", 0.5)
+                            cell.offset_y = info.get("offset_y", 0.5)
+                            cell.cell_zoom = info.get("cell_zoom", 1.0)
+                            cell.rotation = int(info.get("rotation", 0)) % 360
+                        else:
+                            manquants.append(chemin_img)
+                            cell.vider()
+                    else:
+                        if chemin_img:
+                            manquants.append(chemin_img)
+                        cell.vider()
+                    cell.label_mode = info.get("label_mode", "auto")
+                    cell.label_text = info.get("label_text", "")
                 else:
                     cell.vider()
-                cell.label_mode = info.get("label_mode", "auto")
-                cell.label_text = info.get("label_text", "")
-            else:
-                cell.vider()
+            finally:
+                cell.blockSignals(precedent)
             cell.update()
+        if manquants:
+            self._statut(ct("comp_missing_image", path=manquants[0]),
+                         succes=False, duree_ms=6000)
 
     def _sauver_pack_courant(self):
         """Enregistre l'etat actuel de la grille dans le pack selectionne.
@@ -2684,19 +3029,24 @@ class WidgetCompilation(QWidget):
         # On memorise l'etat du pack courant avant de changer.
         self._sauver_pack_courant()
         nb_cases = len(self.grille.cellules)
+        cases_courantes = self._cases_serialisees()
+        utiliser_cases_courantes = (
+            self.batch_index == -1 and
+            any(c.get("chemin") for c in cases_courantes)
+        )
         pack = {
             "nom": ct("comp_batch_pack_name", n=len(self.batch_packs) + 1),
-            "cases": [{"chemin": None, "offset_x": 0.5, "offset_y": 0.5,
-                       "cell_zoom": 1.0, "rotation": 0,
-                       "label_mode": "auto", "label_text": ""}
-                      for _ in range(nb_cases)],
+            "cases": (cases_courantes if utiliser_cases_courantes else
+                      [self._etat_case_vide()
+                       for _ in range(nb_cases)]),
         }
         self.batch_packs.append(pack)
         self.batch_index = len(self.batch_packs) - 1
         self._rafraichir_liste_packs()
         self.liste_packs.setCurrentRow(self.batch_index)
-        # Grille videe pour le nouveau pack.
-        self._appliquer_cases(pack["cases"])
+        if not utiliser_cases_courantes:
+            # Grille videe pour le nouveau pack.
+            self._appliquer_cases(pack["cases"])
         self._rafraichir_apercu()
         self._statut(ct("comp_batch_add"), succes=True, duree_ms=2500)
 
@@ -2720,6 +3070,61 @@ class WidgetCompilation(QWidget):
                 cell.vider()
             self._rafraichir_apercu()
 
+    def _menu_pack(self, pos):
+        item = self.liste_packs.itemAt(pos)
+        if item is None:
+            return
+        idx = self.liste_packs.row(item)
+        if idx < 0 or idx >= len(self.batch_packs):
+            return
+        menu = QMenu(self)
+        act_renommer = menu.addAction(ct("comp_batch_rename"))
+        act_dupliquer = menu.addAction(ct("comp_batch_duplicate"))
+        act_vider = menu.addAction(ct("comp_batch_clear_images"))
+        menu.addSeparator()
+        act_supprimer = menu.addAction(ct("comp_batch_del"))
+        action = menu.exec_(self.liste_packs.mapToGlobal(pos))
+        if action == act_renommer:
+            self._renommer_pack(item)
+        elif action == act_dupliquer:
+            self._dupliquer_pack(idx)
+        elif action == act_vider:
+            self._vider_images_pack(idx)
+        elif action == act_supprimer:
+            self.liste_packs.setCurrentRow(idx)
+            self._supprimer_pack()
+
+    def _dupliquer_pack(self, idx):
+        if idx < 0 or idx >= len(self.batch_packs):
+            return
+        self._sauver_pack_courant()
+        pack = copy.deepcopy(self.batch_packs[idx])
+        pack["nom"] = "%s (copie)" % pack.get("nom", ct("comp_batch_pack_name", n=idx + 1))
+        self.batch_packs.insert(idx + 1, pack)
+        self.batch_index = idx + 1
+        self._rafraichir_liste_packs()
+        self.liste_packs.blockSignals(True)
+        self.liste_packs.setCurrentRow(self.batch_index)
+        self.liste_packs.blockSignals(False)
+        self._appliquer_cases(pack["cases"])
+        self._rafraichir_apercu()
+
+    def _vider_images_pack(self, idx):
+        if idx < 0 or idx >= len(self.batch_packs):
+            return
+        nb_cases = len(self.batch_packs[idx].get("cases", []))
+        if nb_cases <= 0:
+            nb_cases = len(self.grille.cellules)
+        self.batch_packs[idx]["cases"] = [self._etat_case_vide()
+                                          for _ in range(nb_cases)]
+        self.batch_index = idx
+        self._rafraichir_liste_packs()
+        self.liste_packs.blockSignals(True)
+        self.liste_packs.setCurrentRow(idx)
+        self.liste_packs.blockSignals(False)
+        self._appliquer_cases(self.batch_packs[idx]["cases"])
+        self._rafraichir_apercu()
+
     def _renommer_pack(self, item):
         """Renomme le pack (double-clic sur son entree dans la liste)."""
         idx = self.liste_packs.row(item)
@@ -2739,9 +3144,8 @@ class WidgetCompilation(QWidget):
         charge le nouveau dans la grille."""
         if idx < 0 or idx >= len(self.batch_packs):
             return
-        # Sauvegarde du pack que l'on quitte (s'il est different).
-        if self.batch_index != idx:
-            self._sauver_pack_courant()
+        # Sauvegarde du pack courant avant de recharger la grille.
+        self._sauver_pack_courant()
         self.batch_index = idx
         self._appliquer_cases(self.batch_packs[idx]["cases"])
         self._rafraichir_apercu()
@@ -2953,13 +3357,19 @@ class WidgetCompilation(QWidget):
         self.cb_label.blockSignals(False)
         pos = data.get("label_position", "bl")
         if pos in POSITIONS:
+            self.combo_pos.blockSignals(True)
             self.combo_pos.setCurrentIndex(POSITIONS.index(pos))
+            self.combo_pos.blockSignals(False)
+        self.spin_label_size.blockSignals(True)
         self.spin_label_size.setValue(int(data.get("label_size", 16)))
+        self.spin_label_size.blockSignals(False)
         self.label_txt_color = data.get("label_txt_color", "#ffffff")
         self.btn_txt_color.setStyleSheet("background-color:%s;" % self.label_txt_color)
         self.label_bg_color = data.get("label_bg_color", "#000000")
         self.btn_label_bg.setStyleSheet("background-color:%s;" % self.label_bg_color)
+        self.slider_label_op.blockSignals(True)
         self.slider_label_op.setValue(int(data.get("label_bg_opacity", 150)))
+        self.slider_label_op.blockSignals(False)
 
         # Grille : dimensions puis contenu des cases.
         rows = int(data.get("rows", 2))
@@ -2970,22 +3380,12 @@ class WidgetCompilation(QWidget):
         self.spin_cols.setValue(cols)
         self.spin_rows.blockSignals(False)
         self.spin_cols.blockSignals(False)
-        self.grille.appliquer_gabarit(rows, cols)
-
-        cases = data.get("cases", [])
-        for i, cell in enumerate(self.grille.cellules):
-            if i >= len(cases):
-                break
-            info = cases[i]
-            chemin_img = info.get("chemin")
-            if chemin_img and os.path.exists(chemin_img):
-                cell.definir_image(chemin_img)
-                cell.offset_x = info.get("offset_x", 0.5)
-                cell.offset_y = info.get("offset_y", 0.5)
-                cell.cell_zoom = info.get("cell_zoom", 1.0)
-                cell.rotation = int(info.get("rotation", 0)) % 360
-            cell.label_mode = info.get("label_mode", "auto")
-            cell.label_text = info.get("label_text", "")
+        grille_signaux = self.grille.blockSignals(True)
+        try:
+            self.grille.appliquer_gabarit(rows, cols)
+            self._appliquer_cases(data.get("cases", []))
+        finally:
+            self.grille.blockSignals(grille_signaux)
 
         # Mise a jour de l'affichage.
         self.grille.bg_color = self.bg_color
@@ -3001,6 +3401,17 @@ class WidgetCompilation(QWidget):
     # ==================================================================
     def keyPressEvent(self, event):
         ctrl = bool(event.modifiers() & Qt.ControlModifier)
+        if not ctrl and event.key() in (Qt.Key_Tab, Qt.Key_Backtab):
+            if self.grille.cellules:
+                idx = getattr(self.grille, "_index_selection", -1)
+                if idx < 0:
+                    nouveau = 0
+                elif event.key() == Qt.Key_Backtab or event.modifiers() & Qt.ShiftModifier:
+                    nouveau = (idx - 1) % len(self.grille.cellules)
+                else:
+                    nouveau = (idx + 1) % len(self.grille.cellules)
+                self.grille._selectionner(nouveau)
+                return
         # Ctrl+S : export rapide de la compilation (sans dialogue).
         if ctrl and event.key() == Qt.Key_S:
             self._exporter()
