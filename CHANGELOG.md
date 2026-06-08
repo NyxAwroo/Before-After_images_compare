@@ -5,6 +5,108 @@ Format inspiré de [Keep a Changelog](https://keepachangelog.com/fr/).
 
 ---
 
+## [3.3.0] — 2026-06-08
+
+Version de stabilisation et d'ergonomie : correction des bugs relevés dans la
+roadmap 3.2.0, renforcement du module Compilation et ajout de raccourcis /
+outils de productivité.
+
+### Corrigé
+
+**Comparateur**
+- Les comparaisons récentes affichent désormais le bon avertissement si une
+  partie seulement des images est introuvable, et distinguent clairement le
+  cas où il ne reste plus assez d'images valides.
+- Le chargement d'images filtre les pixmaps illisibles au lieu de les conserver
+  dans la session, évitant des exports vides ou des erreurs de rendu.
+- L'export rapide en ligne de commande (`--export-rapide`) ne plante plus si
+  certaines images transmises sont illisibles ou non prises en charge.
+- Le mode Différence revient proprement au mode curseur avec message de statut
+  si le calcul de différence échoue.
+- Le curseur visuel du mode « curseur en direct » ne reste plus bloqué en mode
+  Split pendant un déplacement au clic droit.
+- La loupe en mode Côte à côte affiche l'image la plus proche lorsque le
+  curseur se trouve dans l'espace entre deux images.
+- L'export respecte maintenant le mode affiché : Côte à côte et Différence ont
+  chacun un rendu dédié au lieu de produire systématiquement un export à
+  curseurs.
+- Le test d'export de zone zoomée se base désormais uniquement sur le zoom réel.
+- La touche Suppr fonctionne plus naturellement avec la barre de miniatures
+  grâce à une meilleure gestion du focus et de la sélection.
+- Les chemins invalides issus d'un réordonnancement de miniatures sont filtrés
+  avant de recharger le pack.
+- Les erreurs de chargement de fichiers de langue externes sont journalisées
+  dans `comparateur_crash.log` au lieu d'être ignorées silencieusement.
+
+**Compilation**
+- Les restaurations d'historique/projet bloquent les signaux intermédiaires :
+  les offsets, zooms, rotations et étiquettes sont restaurés avant tout
+  enregistrement d'historique.
+- Les timers de zoom des cellules sont stoppés avant reconstruction de grille,
+  évitant les erreurs PyQt sur objets supprimés lors de Ctrl+Z rapides.
+- Les projets et états d'historique signalent dans la barre de statut les
+  images devenues introuvables au lieu de vider les cases silencieusement.
+- Les gabarits créés avec `+ Nouveau gabarit` enregistrent maintenant tous les
+  réglages du volet, comme `Sauver la grille actuelle`.
+- Le changement de position d'étiquette pendant une restauration bloque ses
+  signaux, évitant les rafraîchissements intermédiaires incohérents.
+- Le verrouillage du ratio de sortie utilise un ratio mémorisé cohérent, même
+  pendant la modification directe des dimensions.
+- Le premier pack de compilation peut récupérer automatiquement les images déjà
+  présentes dans la grille.
+- Le pack courant est sauvegardé à la fermeture ; si des packs de compilation
+  existent encore, une confirmation évite une perte silencieuse.
+- Un fichier `compilation_templates.json` corrompu est sauvegardé en `.bak` et
+  signalé à l'utilisateur.
+- Le repli de différence sans OpenCV utilise Pillow de façon vectorisée, ou
+  affiche un message au lieu de bloquer l'interface avec une boucle pixel par
+  pixel.
+- La superposition de filigrane se resynchronise aussi sur suppression de
+  widgets enfants.
+- La clé française `sc_comp_export` manquante a été ajoutée.
+
+### Ajouté
+
+**Comparateur**
+- Support `.webp` et `.bmp` dans le glisser-déposer principal et dans
+  l'ajout d'images à un pack.
+- Barre de statut en bas du comparateur pour les actions non bloquantes.
+- Export JPEG 1:1 rapide via `Ctrl+Shift+S`, sans dialogue, avec confirmation
+  dans la barre de statut.
+- Overlay discret du nom du pack en haut à droite de la vue image, activable
+  ou désactivable dans les Paramètres.
+- Navigation entre packs avec `Tab` / `Shift+Tab`.
+- Bascule entre onglets avec `Ctrl+Tab`.
+- Le récapitulatif des raccourcis inclut les nouveaux raccourcis du comparateur
+  et de la compilation.
+
+**Compilation**
+- Mode d'import par glisser-déposer dans le volet Packs :
+  `Par gabarit` regroupe les images selon la grille courante, tandis que
+  `Planche unique` crée un seul pack et redimensionne la grille pour accueillir
+  les images déposées.
+- Le mode d'import des packs est persistant via `compilation_import_mode`.
+- Glisser-déposer d'un lot d'images directement sur le volet ou la liste des
+  packs, avec création automatique des packs et message de statut.
+- Menu contextuel par clic droit sur un pack : renommer, dupliquer, vider les
+  images ou supprimer.
+- Navigation entre cases de la grille avec `Tab` / `Shift+Tab`.
+- Filtre textuel des gabarits, sans casser la correspondance avec les gabarits
+  internes.
+- Les réglages du volet Compilation (format, séparateur, bordure, labels,
+  filigrane, etc.) sont sauvegardés à la fermeture et restaurés au démarrage.
+
+### Modifié
+
+- `+ Nouveau gabarit` utilise maintenant une seule fenêtre de saisie
+  (nom + lignes + colonnes), avec valeurs actuelles en défaut.
+- `Sauver la grille actuelle` et `+ Nouveau gabarit` partagent le même moteur
+  de sauvegarde de gabarit complet.
+- La zone cliquable des étiquettes de cellule suit désormais la position réelle
+  du badge affiché, au lieu de rester en bas de la case.
+
+---
+
 ## [3.2.0] — 2026-05-18
 
 ### Corrigé
