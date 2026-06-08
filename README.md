@@ -240,7 +240,7 @@ To remove the menu: double-click **`desinstaller_raccourcis.bat`**.
 
 ---
 ### 💛 Support the project
-InstaLocalPlanner is a free, open project developed on personal time. If it helps your Instagram workflow, you can support its development with a donation.
+Before-After images compare is a free, open project developed on personal time. If it helps your Instagram workflow, you can support its development with a donation.
 
 **Donation link:** [PayPal](https://www.paypal.com/paypalme/NyxAwroo) 
 // Donations help fund development time, testing, documentation and future improvements. Huge thanks to anyone who contributes 🙏
