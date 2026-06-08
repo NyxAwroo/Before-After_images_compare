@@ -1,6 +1,7 @@
 <div align="center">
 
 # 📸 Comparateur Pro — Before / After Image Compare
+**✨[Sponsor this project](https://www.paypal.com/paypalme/NyxAwroo)**
 
 <p>
   <img src="https://img.shields.io/badge/Langue-Français-007acc?style=for-the-badge" alt="Langue Français">
@@ -24,7 +25,9 @@
 <!--  EMPLACEMENT CAPTURE PRINCIPALE — collez ici le lien de l'image       -->
 <!--  Exemple : <img src="LIEN_IMAGE_INTERFACE" width="820">               -->
 <!-- ════════════════════════════════════════════════════════════════════ -->
-<img src="" alt="Interface principale de Comparateur Pro" width="820">
+<img src="screenshot demo/v3/comparator (1).png" alt="Interface principale de Comparateur Pro" width="820">
+<br><br>
+<img src="screenshot demo/v3/compilator (1).png" alt="Interface principale de Comparateur Pro" width="820">
 
 </div>
 
@@ -82,22 +85,18 @@ a besoin de comparaisons visuelles précises ou de planches d'images soignées.
 <div align="center">
 
 <!-- Capture 1 : le comparateur en action -->
-<img src="" alt="Le comparateur d'images" width="780">
+<img src="screenshot demo/Export_Rapide_3_20260506_213641.jpg" alt="Le comparateur d'images" width="350">
 
 <br><br>
 
 <!-- Capture 2 : l'outil de compilation -->
-<img src="" alt="L'outil de compilation" width="780">
-
-<br><br>
-
-<!-- Capture 3 : un export de compilation -->
-<img src="" alt="Exemple d'export de compilation" width="780">
+<img src="screenshot demo/v3/compilator (1).png" alt="L'outil de compilation" width="580">
+<img src="screenshot demo/v3/compilator (2).png" alt="L'outil de compilation" width="580">
 
 <br><br>
 
 <!-- Capture 4 : l'intégration au menu clic droit -->
-<img src="" alt="Intégration au menu clic droit Windows" width="620">
+<img src="screenshot demo/Explorateur de fichiers.png" alt="Intégration au menu clic droit Windows" width="620">
 
 </div>
 
@@ -239,8 +238,16 @@ To remove the menu: double-click **`desinstaller_raccourcis.bat`**.
 
 > 💡 A full list is also available inside the app, under ⚙ Settings.
 
-## 📝 License
+---
+### 💛 Support the project
+Before-After images compare is a free, open project developed on personal time. If it helps your Instagram workflow, you can support its development with a donation.
 
+**Donation link:** [PayPal](https://www.paypal.com/paypalme/NyxAwroo) 
+// Donations help fund development time, testing, documentation and future improvements. Huge thanks to anyone who contributes 🙏
+
+---
+
+## 📝 License
 Released under the **[MIT License](LICENSE)**. Free to use, modify and
 redistribute.
 
